@@ -210,8 +210,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Expanded(
               child: _buildStatCard(
-                'Total Lectures',
-                _overallStats.conductedLectures.toString(),
+                'Total Classes',
+                _overallStats.conductedClasses.toString(),
                 Colors.blue,
                 PhosphorIcons.books(),
               ),
@@ -312,7 +312,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildAttendanceChart() {
-    if (_overallStats.conductedLectures == 0) {
+    if (_overallStats.conductedClasses == 0) {
       return Container(
         height: 200,
         decoration: BoxDecoration(
@@ -387,7 +387,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             _buildTypeBreakdownRow(
               'Total Lectures Attended',
               _lectureStats.presentCount,
-              _lectureStats.conductedLectures,
+              _lectureStats.conductedClasses,
               _lectureStats.attendancePercentage,
               AppTheme.lectureColor,
             ),
@@ -398,7 +398,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             _buildTypeBreakdownRow(
               'Total Labs Attended',
               _labStats.presentCount,
-              _labStats.conductedLectures,
+              _labStats.conductedClasses,
               _labStats.attendancePercentage,
               AppTheme.labColor,
             ),
@@ -480,8 +480,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 final stats =
                     _subjectStats[subject.id] ??
                     AttendanceStats(
-                      totalLectures: 0,
-                      conductedLectures: 0,
+                      totalClasses: 0,
+                      conductedClasses: 0,
                       presentCount: 0,
                       absentCount: 0,
                     );
@@ -515,7 +515,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             ),
                           ),
                           Text(
-                            '${stats.presentCount}/${stats.conductedLectures}',
+                            '${stats.presentCount}/${stats.conductedClasses}',
                             style: AppTheme.bodyTextStyle.copyWith(
                               color: Color(
                                 int.parse(
@@ -537,8 +537,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: [
                           Expanded(
                             child: LinearProgressIndicator(
-                              value: stats.conductedLectures > 0
-                                  ? stats.presentCount / stats.conductedLectures
+                              value: stats.conductedClasses > 0
+                                  ? stats.presentCount / stats.conductedClasses
                                   : 0,
                               backgroundColor: Color(
                                 int.parse(

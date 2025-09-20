@@ -165,8 +165,8 @@ class ScheduleCard extends StatelessWidget {
                       ),
                       child: Text(
                         subject!.type == SubjectType.lecture
-                            ? 'Lecture'
-                            : 'Lab',
+                            ? 'Lecture (1h)'
+                            : 'Lab (2h)',
                         style: AppTheme.captionTextStyle.copyWith(
                           color: AppTheme.getSubjectTypeColor(
                             subject!.type.toString(),

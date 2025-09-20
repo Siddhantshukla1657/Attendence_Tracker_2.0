@@ -124,19 +124,19 @@ class AttendanceRecord {
 
 // Helper class for attendance statistics
 class AttendanceStats {
-  final int totalLectures;
-  final int conductedLectures;
+  final int totalClasses;
+  final int conductedClasses;
   final int presentCount;
   final int absentCount;
   final double attendancePercentage;
 
   AttendanceStats({
-    required this.totalLectures,
-    required this.conductedLectures,
+    required this.totalClasses,
+    required this.conductedClasses,
     required this.presentCount,
     required this.absentCount,
-  }) : attendancePercentage = conductedLectures > 0
-           ? (presentCount / conductedLectures) * 100
+  }) : attendancePercentage = conductedClasses > 0
+           ? (presentCount / conductedClasses) * 100
            : 0.0;
 
   factory AttendanceStats.fromRecords(List<AttendanceRecord> records) {
@@ -145,8 +145,8 @@ class AttendanceStats {
     final absent = records.where((r) => r.wasAbsent).length;
 
     return AttendanceStats(
-      totalLectures: records.length,
-      conductedLectures: conducted.length,
+      totalClasses: records.length,
+      conductedClasses: conducted.length,
       presentCount: present,
       absentCount: absent,
     );
@@ -154,8 +154,8 @@ class AttendanceStats {
 
   Map<String, dynamic> toJson() {
     return {
-      'totalLectures': totalLectures,
-      'conductedLectures': conductedLectures,
+      'totalClasses': totalClasses,
+      'conductedClasses': conductedClasses,
       'presentCount': presentCount,
       'absentCount': absentCount,
       'attendancePercentage': attendancePercentage,

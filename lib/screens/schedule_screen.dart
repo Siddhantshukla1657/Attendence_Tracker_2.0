@@ -82,6 +82,37 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (_todayAttendance.isEmpty && _todaySchedule.isNotEmpty) {
         print('ScheduleScreen: Creating attendance records from schedule');
         await _createTodayAttendanceRecords();
+      } else if (_todaySchedule.isNotEmpty) {
+        // Check if we have attendance records for all scheduled slots
+        print(
+          'ScheduleScreen: Checking for missing attendance records. Slots: ${_todaySchedule.length}, Records: ${_todayAttendance.length}',
+        );
+        final missingRecords = <TimeSlot>[];
+        for (final slot in _todaySchedule) {
+          if (slot.subjectId != null) {
+            final hasRecord = _todayAttendance.any(
+              (record) =>
+                  record.subjectId == slot.subjectId &&
+                  record.startTime.hour == slot.startTime.hour &&
+                  record.startTime.minute == slot.startTime.minute,
+            );
+            print(
+              'ScheduleScreen: Slot ${slot.subjectId} has record: $hasRecord',
+            );
+            if (!hasRecord) {
+              missingRecords.add(slot);
+            }
+          }
+        }
+
+        if (missingRecords.isNotEmpty) {
+          print(
+            'ScheduleScreen: Creating ${missingRecords.length} missing attendance records',
+          );
+          await _createAttendanceRecordsForSlots(missingRecords);
+        } else {
+          print('ScheduleScreen: No missing attendance records found');
+        }
       }
     } catch (e) {
       print('ScheduleScreen: Error loading data: $e');
@@ -104,7 +135,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (slot.subjectId != null) {
         final subject = _getSubjectById(slot.subjectId!);
         print(
-          'ScheduleScreen: Creating attendance record for ${subject?.name} (${subject?.type})',
+          'ScheduleScreen: Creating attendance record for ${subject?.name} (${subject?.type}) - Duration: ${subject?.duration}',
         );
 
         final record = AttendanceRecord(
@@ -137,6 +168,51 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     _todayAttendance = newRecords;
     print('ScheduleScreen: Created ${newRecords.length} attendance records');
+  }
+
+  Future<void> _createAttendanceRecordsForSlots(List<TimeSlot> slots) async {
+    final newRecords = <AttendanceRecord>[];
+
+    for (final slot in slots) {
+      if (slot.subjectId != null) {
+        final subject = _getSubjectById(slot.subjectId!);
+        print(
+          'ScheduleScreen: Creating missing attendance record for ${subject?.name} (${subject?.type}) - Duration: ${subject?.duration}',
+        );
+
+        final record = AttendanceRecord(
+          id: DateTime.now().millisecondsSinceEpoch.toString() + slot.id,
+          subjectId: slot.subjectId!,
+          date: _selectedDate,
+          startTime: DateTime(
+            _selectedDate.year,
+            _selectedDate.month,
+            _selectedDate.day,
+            slot.startTime.hour,
+            slot.startTime.minute,
+          ),
+          endTime: DateTime(
+            _selectedDate.year,
+            _selectedDate.month,
+            _selectedDate.day,
+            slot.endTime.hour,
+            slot.endTime.minute,
+          ),
+          status: AttendanceStatus.free,
+          location: slot.location,
+          createdAt: DateTime.now(),
+        );
+
+        newRecords.add(record);
+        await StorageService.addAttendanceRecord(record);
+      }
+    }
+
+    // Add new records to existing list
+    _todayAttendance.addAll(newRecords);
+    print(
+      'ScheduleScreen: Created ${newRecords.length} missing attendance records',
+    );
   }
 
   Subject? _getSubjectById(String id) {

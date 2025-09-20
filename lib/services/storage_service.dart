@@ -4,7 +4,6 @@ import 'package:attendence_tracker/models/subject.dart';
 import 'package:attendence_tracker/models/attendance.dart';
 import 'package:attendence_tracker/models/timetable.dart';
 
-
 class StorageService {
   static const String _subjectsKey = 'subjects';
   static const String _attendanceKey = 'attendance_records';
@@ -194,7 +193,7 @@ class StorageService {
     if (index != -1) {
       subjects[index] = updatedSubject;
       await saveSubjects(subjects);
-    // Notify all screens to refresh as subject changes affect many screens would happen here
+      // Notify all screens to refresh as subject changes affect many screens would happen here
     }
   }
 

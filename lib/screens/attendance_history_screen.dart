@@ -1012,7 +1012,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        subject.type == SubjectType.lecture ? 'Lecture' : 'Lab',
+                        subject.type == SubjectType.lecture
+                            ? 'Lecture (1h)'
+                            : 'Lab (2h)',
                         style: AppTheme.captionTextStyle.copyWith(
                           color: AppTheme.getSubjectTypeColor(
                             subject.type.toString(),
