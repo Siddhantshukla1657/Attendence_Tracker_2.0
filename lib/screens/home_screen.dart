@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:attendence_tracker/screens/schedule_screen.dart';
 import 'package:attendence_tracker/screens/attendance_screen.dart';
@@ -98,6 +99,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Attendance Tracker'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              widget.isDarkMode ? PhosphorIcons.sun() : PhosphorIcons.moon(),
+            ),
+            onPressed: widget.onThemeToggle,
+            tooltip: 'Toggle theme',
+          ),
+        ],
+      ),
       body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
