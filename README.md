@@ -327,18 +327,6 @@ We welcome contributions! Please follow these steps:
 - Add comments for complex logic
 - Maintain consistent formatting
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Flutter team for the amazing framework
-- Material Design for the beautiful UI components
-- Phosphor Icons for the modern icon set
-- FL Chart for the interactive charts
-- All contributors who helped improve this project
-
 ## 📞 Support
 
 If you have any questions or need support:
