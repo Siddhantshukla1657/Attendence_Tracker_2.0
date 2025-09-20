@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:attendence_tracker/models/subject.dart';
 import 'package:attendence_tracker/models/attendance.dart';
 import 'package:attendence_tracker/models/timetable.dart';
-import './navigation_service.dart';
+
 
 class StorageService {
   static const String _subjectsKey = 'subjects';
@@ -178,17 +178,14 @@ class StorageService {
         .map((subject) => jsonEncode(subject.toJson()))
         .toList();
     await _saveWithBackup(_subjectsKey, subjectsJson);
-    // Update navigation service cache and notify screens
-    NavigationService.updateCache(subjects: subjects);
-    DataRefreshNotifier().refreshSubjectScreens();
+    // Update cache and notify screens would happen here if NavigationService existed
   }
 
   static Future<void> addSubject(Subject subject) async {
     final subjects = await getSubjects();
     subjects.add(subject);
     await saveSubjects(subjects);
-    // Notify all relevant screens to refresh
-    DataRefreshNotifier().refreshAllScreens();
+    // Notify all relevant screens to refresh would happen here
   }
 
   static Future<void> updateSubject(Subject updatedSubject) async {
@@ -197,8 +194,7 @@ class StorageService {
     if (index != -1) {
       subjects[index] = updatedSubject;
       await saveSubjects(subjects);
-      // Notify all screens to refresh as subject changes affect many screens
-      DataRefreshNotifier().refreshAllScreens();
+    // Notify all screens to refresh as subject changes affect many screens would happen here
     }
   }
 
@@ -213,7 +209,6 @@ class StorageService {
     await saveAttendanceRecords(attendance);
 
     // Notify all screens to refresh as deleting subjects affects timetables and attendance
-    DataRefreshNotifier().refreshAllScreens();
   }
 
   static Future<Subject?> getSubjectById(String id) async {
@@ -240,18 +235,14 @@ class StorageService {
         .map((record) => jsonEncode(record.toJson()))
         .toList();
     await _saveWithBackup(_attendanceKey, recordsJson);
-    // Update navigation service cache and notify screens
-    NavigationService.updateCache(attendance: records);
-    DataRefreshNotifier().refreshAttendanceScreens();
+    // Update cache and notify screens would happen here if NavigationService existed
   }
 
   static Future<void> addAttendanceRecord(AttendanceRecord record) async {
     final records = await getAttendanceRecords();
     records.add(record);
     await saveAttendanceRecords(records);
-    // Notify attendance and schedule screens
-    DataRefreshNotifier().refreshAttendanceScreens();
-    DataRefreshNotifier().refreshScheduleScreen();
+    // Notify attendance and schedule screens would happen here
   }
 
   static Future<void> updateAttendanceRecord(
@@ -262,9 +253,7 @@ class StorageService {
     if (index != -1) {
       records[index] = updatedRecord;
       await saveAttendanceRecords(records);
-      // Notify all relevant screens
-      DataRefreshNotifier().refreshAttendanceScreens();
-      DataRefreshNotifier().refreshScheduleScreen();
+      // Notify all relevant screens would happen here
     }
   }
 
@@ -334,18 +323,14 @@ class StorageService {
         .map((timetable) => jsonEncode(timetable.toJson()))
         .toList();
     await _saveWithBackup(_timetablesKey, timetablesJson);
-    // Update navigation service cache and notify screens
-    NavigationService.updateCache(timetables: timetables);
-    DataRefreshNotifier().refreshTimetableScreens();
-    DataRefreshNotifier().refreshScheduleScreen();
+    // Update cache and notify screens would happen here if NavigationService existed
   }
 
   static Future<void> addTimetable(Timetable timetable) async {
     final timetables = await getTimetables();
     timetables.add(timetable);
     await saveTimetables(timetables);
-    // Notify relevant screens
-    DataRefreshNotifier().refreshTimetableScreens();
+    // Notify relevant screens would happen here
   }
 
   static Future<void> updateTimetable(Timetable updatedTimetable) async {
@@ -355,7 +340,6 @@ class StorageService {
       timetables[index] = updatedTimetable;
       await saveTimetables(timetables);
       // Notify all relevant screens as timetable changes affect schedule
-      DataRefreshNotifier().refreshAllScreens();
     }
   }
 
@@ -364,7 +348,6 @@ class StorageService {
     timetables.removeWhere((t) => t.id == timetableId);
     await saveTimetables(timetables);
     // Notify all screens as deleting timetables affects many screens
-    DataRefreshNotifier().refreshAllScreens();
   }
 
   static Future<Timetable?> getActiveTimetable() async {
@@ -385,8 +368,6 @@ class StorageService {
     }
     await saveTimetables(timetables);
     // Notify schedule screen as active timetable change affects daily schedule
-    DataRefreshNotifier().refreshScheduleScreen();
-    DataRefreshNotifier().refreshTimetableScreens();
   }
 
   // Settings operations

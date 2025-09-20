@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:attendence_tracker/theme/app_theme.dart';
 import 'package:attendence_tracker/services/storage_service.dart';
-import 'package:attendence_tracker/services/navigation_service.dart';
+
 import 'package:attendence_tracker/screens/home_screen.dart';
 
 void main() async {
@@ -55,7 +55,7 @@ class _AttendanceTrackerAppState extends State<AttendanceTrackerApp> {
     return MaterialApp(
       title: 'Attendance Tracker',
       debugShowCheckedModeBanner: false,
-      navigatorKey: NavigationService.navigatorKey,
+
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
