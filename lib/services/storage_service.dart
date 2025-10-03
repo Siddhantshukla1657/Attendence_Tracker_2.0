@@ -266,7 +266,7 @@ class StorageService {
     DateTime date,
   ) async {
     final records = await getAttendanceRecords();
-    return records
+    final dateRecords = records
         .where(
           (r) =>
               r.date.year == date.year &&
@@ -274,6 +274,27 @@ class StorageService {
               r.date.day == date.day,
         )
         .toList();
+
+    // Remove duplicates based on date, time, and subject
+    final uniqueRecords = <AttendanceRecord>[];
+    final seen = <String>{};
+
+    for (final record in dateRecords) {
+      final key =
+          '${record.date.year}-${record.date.month}-${record.date.day}_${record.startTime.hour}:${record.startTime.minute}_${record.subjectId}';
+      if (!seen.contains(key)) {
+        seen.add(key);
+        uniqueRecords.add(record);
+      } else {
+        // Log duplicate found and remove it
+        print(
+          'StorageService: Found duplicate attendance record: ${record.id}',
+        );
+        await deleteAttendanceRecord(record.id);
+      }
+    }
+
+    return uniqueRecords;
   }
 
   static Future<List<AttendanceRecord>> getAttendanceForSubject(
@@ -438,6 +459,37 @@ class StorageService {
     final subjects = await getSubjects();
     final timetables = await getTimetables();
     return subjects.isNotEmpty || timetables.isNotEmpty;
+  }
+
+  // Clean up duplicate attendance records
+  static Future<int> cleanupDuplicateAttendanceRecords() async {
+    final allRecords = await getAttendanceRecords();
+    final uniqueRecords = <AttendanceRecord>[];
+    final seen = <String>{};
+    int duplicatesRemoved = 0;
+
+    for (final record in allRecords) {
+      final key =
+          '${record.date.year}-${record.date.month}-${record.date.day}_${record.startTime.hour}:${record.startTime.minute}_${record.subjectId}';
+      if (!seen.contains(key)) {
+        seen.add(key);
+        uniqueRecords.add(record);
+      } else {
+        duplicatesRemoved++;
+        print(
+          'StorageService: Removing duplicate attendance record: ${record.id}',
+        );
+      }
+    }
+
+    if (duplicatesRemoved > 0) {
+      await saveAttendanceRecords(uniqueRecords);
+      print(
+        'StorageService: Cleaned up $duplicatesRemoved duplicate attendance records',
+      );
+    }
+
+    return duplicatesRemoved;
   }
 
   // Get storage usage info

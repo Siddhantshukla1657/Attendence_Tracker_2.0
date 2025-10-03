@@ -7,6 +7,9 @@ import 'package:attendence_tracker/models/subject.dart';
 import 'package:attendence_tracker/services/storage_service.dart';
 import 'package:attendence_tracker/theme/app_theme.dart';
 
+// Add enum for report types
+enum ReportType { monthly, overall }
+
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -19,6 +22,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   List<Subject> _subjects = [];
   DateTime _selectedMonth = DateTime.now();
   bool _isLoading = true;
+  ReportType _reportType = ReportType.monthly; // Add report type
 
   // Overall statistics
   late AttendanceStats _overallStats;
@@ -58,15 +62,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Future<void> _loadReportsData() async {
     setState(() => _isLoading = true);
     print(
-      'ReportsScreen: Loading reports data for ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+      'ReportsScreen: Loading ${_reportType == ReportType.monthly ? "monthly" : "overall"} reports data for ${_reportType == ReportType.monthly ? DateFormat('yyyy-MM').format(_selectedMonth) : "all time"}',
     );
 
     try {
       _subjects = await StorageService.getSubjects();
-      _allRecords = await StorageService.getAttendanceForMonth(
-        _selectedMonth.year,
-        _selectedMonth.month,
-      );
+
+      // Load records based on report type
+      if (_reportType == ReportType.monthly) {
+        _allRecords = await StorageService.getAttendanceForMonth(
+          _selectedMonth.year,
+          _selectedMonth.month,
+        );
+      } else {
+        // For overall report, get all records
+        _allRecords = await StorageService.getAttendanceRecords();
+      }
+
       print(
         'ReportsScreen: Loaded ${_subjects.length} subjects and ${_allRecords.length} attendance records',
       );
@@ -136,20 +148,122 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _showMonthPicker() async {
-    final picked = await showDatePicker(
+    // Create a custom dialog for year and month selection
+    final selectedDate = await showDialog<DateTime>(
       context: context,
-      initialDate: _selectedMonth,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDatePickerMode: DatePickerMode.year,
+      builder: (BuildContext context) {
+        final now = DateTime.now();
+        int selectedYear = _selectedMonth.year;
+        int selectedMonth = _selectedMonth.month;
+        
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: const Text('Select Year and Month'),
+              content: SizedBox(
+                width: 300,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Year',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.of(context).dividerColor),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          isExpanded: true,
+                          value: selectedYear,
+                          items: List.generate(
+                            now.year - 2020 + 1,
+                            (index) => DropdownMenuItem(
+                              value: 2020 + index,
+                              child: Text('${2020 + index}'),
+                            ),
+                          ),
+                          onChanged: (int? value) {
+                            if (value != null) {
+                              setState(() {
+                                selectedYear = value;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Month',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.of(context).dividerColor),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          isExpanded: true,
+                          value: selectedMonth,
+                          items: List.generate(
+                            12,
+                            (index) => DropdownMenuItem(
+                              value: index + 1,
+                              child: Text(DateFormat('MMMM').format(DateTime(2020, index + 1, 1))),
+                            ),
+                          ),
+                          onChanged: (int? value) {
+                            if (value != null) {
+                              setState(() {
+                                selectedMonth = value;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(DateTime(selectedYear, selectedMonth)),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
 
-    if (picked != null) {
+    if (selectedDate != null) {
       setState(() {
-        _selectedMonth = DateTime(picked.year, picked.month);
+        _selectedMonth = selectedDate;
       });
       _loadReportsData();
     }
+  }
+
+  // Method to change report type
+  void _changeReportType(ReportType type) {
+    setState(() {
+      _reportType = type;
+    });
+    _loadReportsData();
   }
 
   @override
@@ -158,10 +272,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
       appBar: AppBar(
         title: const Text('Reports'),
         actions: [
-          TextButton.icon(
-            onPressed: _showMonthPicker,
+          // Add dropdown for report type
+          PopupMenuButton<ReportType>(
+            icon: Icon(PhosphorIcons.list()),
+            onSelected: _changeReportType,
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<ReportType>>[
+              const PopupMenuItem<ReportType>(
+                value: ReportType.monthly,
+                child: Text('Monthly Report'),
+              ),
+              const PopupMenuItem<ReportType>(
+                value: ReportType.overall,
+                child: Text('Overall Report'),
+              ),
+            ],
+          ),
+          // Always show the month picker button, but disable it for overall reports
+          IconButton(
+            onPressed: _reportType == ReportType.monthly
+                ? _showMonthPicker
+                : null,
             icon: Icon(PhosphorIcons.calendar()),
-            label: Text(DateFormat('MMM yyyy').format(_selectedMonth)),
+            tooltip: DateFormat('MMM yyyy').format(_selectedMonth),
           ),
         ],
       ),
@@ -172,9 +304,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Month header
+                  // Update header based on report type
                   Text(
-                    'Attendance Summary for ${DateFormat('MMMM yyyy').format(_selectedMonth)}',
+                    _reportType == ReportType.monthly
+                        ? 'Attendance Summary for ${DateFormat('MMMM yyyy').format(_selectedMonth)}'
+                        : 'Overall Attendance Summary',
                     style: AppTheme.headingTextStyle,
                   ),
                   const SizedBox(height: 20),

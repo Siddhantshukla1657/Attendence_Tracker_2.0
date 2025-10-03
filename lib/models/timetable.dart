@@ -181,6 +181,8 @@ class Timetable {
             (slotJson) => TimeSlot.fromJson(slotJson as Map<String, dynamic>),
           )
           .toList();
+      // Sort slots by start time when loading from storage
+      slots.sort((a, b) => a.startTime.compareTo(b.startTime));
       schedule[day] = slots;
     });
 
@@ -198,7 +200,10 @@ class Timetable {
 
   // Get schedule for a specific day
   List<TimeSlot> getScheduleForDay(DayOfWeek day) {
-    return schedule[day] ?? [];
+    final daySlots = List<TimeSlot>.from(schedule[day] ?? []);
+    // Always sort by start time to ensure consistent ordering
+    daySlots.sort((a, b) => a.startTime.compareTo(b.startTime));
+    return daySlots;
   }
 
   // Get all time slots for all days

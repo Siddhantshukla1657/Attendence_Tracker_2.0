@@ -78,6 +78,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         'ScheduleScreen: Loaded ${_todayAttendance.length} attendance records',
       );
 
+      // Clean up any duplicate records
+      final duplicatesRemoved =
+          await StorageService.cleanupDuplicateAttendanceRecords();
+      if (duplicatesRemoved > 0) {
+        print(
+          'ScheduleScreen: Cleaned up $duplicatesRemoved duplicate records',
+        );
+        // Reload attendance records after cleanup
+        _todayAttendance = await StorageService.getAttendanceForDate(
+          _selectedDate,
+        );
+      }
+
       // If no attendance records exist for today, create them from schedule
       if (_todayAttendance.isEmpty && _todaySchedule.isNotEmpty) {
         print('ScheduleScreen: Creating attendance records from schedule');
@@ -93,11 +106,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             final hasRecord = _todayAttendance.any(
               (record) =>
                   record.subjectId == slot.subjectId &&
+                  record.date.year == _selectedDate.year &&
+                  record.date.month == _selectedDate.month &&
+                  record.date.day == _selectedDate.day &&
                   record.startTime.hour == slot.startTime.hour &&
                   record.startTime.minute == slot.startTime.minute,
             );
             print(
-              'ScheduleScreen: Slot ${slot.subjectId} has record: $hasRecord',
+              'ScheduleScreen: Slot ${slot.subjectId} (${slot.startTime.hour}:${slot.startTime.minute}) has record: $hasRecord',
             );
             if (!hasRecord) {
               missingRecords.add(slot);
@@ -138,8 +154,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           'ScheduleScreen: Creating attendance record for ${subject?.name} (${subject?.type}) - Duration: ${subject?.duration}',
         );
 
+        // Create unique ID using date, time, and subject to prevent duplicates
+        final uniqueId =
+            '${_selectedDate.year}${_selectedDate.month.toString().padLeft(2, '0')}${_selectedDate.day.toString().padLeft(2, '0')}_${slot.startTime.hour.toString().padLeft(2, '0')}${slot.startTime.minute.toString().padLeft(2, '0')}_${slot.subjectId}';
+
         final record = AttendanceRecord(
-          id: DateTime.now().millisecondsSinceEpoch.toString() + slot.id,
+          id: uniqueId,
           subjectId: slot.subjectId!,
           date: _selectedDate,
           startTime: DateTime(
@@ -180,8 +200,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           'ScheduleScreen: Creating missing attendance record for ${subject?.name} (${subject?.type}) - Duration: ${subject?.duration}',
         );
 
+        // Create unique ID using date, time, and subject to prevent duplicates
+        final uniqueId =
+            '${_selectedDate.year}${_selectedDate.month.toString().padLeft(2, '0')}${_selectedDate.day.toString().padLeft(2, '0')}_${slot.startTime.hour.toString().padLeft(2, '0')}${slot.startTime.minute.toString().padLeft(2, '0')}_${slot.subjectId}';
+
         final record = AttendanceRecord(
-          id: DateTime.now().millisecondsSinceEpoch.toString() + slot.id,
+          id: uniqueId,
           subjectId: slot.subjectId!,
           date: _selectedDate,
           startTime: DateTime(
@@ -230,6 +254,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return _todayAttendance.firstWhere(
         (record) =>
             record.subjectId == slot.subjectId &&
+            record.date.year == _selectedDate.year &&
+            record.date.month == _selectedDate.month &&
+            record.date.day == _selectedDate.day &&
             record.startTime.hour == slot.startTime.hour &&
             record.startTime.minute == slot.startTime.minute,
       );

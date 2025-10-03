@@ -58,6 +58,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       _subjects = await StorageService.getSubjects();
+
+      // Clean up any duplicate records before loading
+      final duplicatesRemoved =
+          await StorageService.cleanupDuplicateAttendanceRecords();
+      if (duplicatesRemoved > 0) {
+        print(
+          'AttendanceScreen: Cleaned up $duplicatesRemoved duplicate records',
+        );
+      }
+
       _attendanceRecords = await StorageService.getAttendanceForDate(
         _selectedDate,
       );
