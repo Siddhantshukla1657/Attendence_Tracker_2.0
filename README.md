@@ -141,8 +141,8 @@ A comprehensive Flutter-based attendance tracking application designed for stude
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/attendance-tracker.git
-   cd attendance-tracker
+   git clone https://github.com/Siddhantshukla1657/Attendence_Tracker_2.0.git
+   cd Attendence_Tracker_2.0
    ```
 
 2. **Install dependencies**
@@ -319,57 +319,9 @@ dependencies:
   phosphor_flutter: ^2.0.1     # Modern icons
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ### Code Style
 - Follow Flutter's official style guide
 - Use meaningful variable and function names
 - Add comments for complex logic
 - Maintain consistent formatting
-
-## 📞 Support
-
-If you have any questions or need support:
-
-- Create an issue on GitHub
-- Check the [documentation](docs/)
-- Join our community discussions
-
-## 🚀 Future Enhancements
-
-- [ ] Cloud synchronization
-- [ ] Notification reminders
-- [ ] Export to PDF reports
-- [ ] Biometric attendance
-- [ ] Multi-semester support
-- [ ] Teacher/Parent portal
-- [ ] Offline maps integration
-- [ ] Voice commands
-- [ ] AI-powered insights
-
----
-
-**Made with ❤️ using Flutter**
-
-*This app helps students take control of their academic attendance and stay organized throughout their educational journey.*
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
