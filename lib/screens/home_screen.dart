@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:attendence_tracker/screens/schedule_screen.dart';
 import 'package:attendence_tracker/screens/attendance_screen.dart';
@@ -7,6 +6,9 @@ import 'package:attendence_tracker/screens/subjects_screen.dart';
 import 'package:attendence_tracker/screens/timetable_screen.dart';
 import 'package:attendence_tracker/screens/reports_screen.dart';
 import 'package:attendence_tracker/screens/attendance_history_screen.dart';
+import 'package:attendence_tracker/screens/profile_screen.dart';
+import 'package:attendence_tracker/screens/auth_screen.dart';
+import 'package:attendence_tracker/services/backend_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onThemeToggle;
@@ -24,6 +26,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  bool _isAuthenticated = false;
+  final BackendService _backendService = BackendService();
+  
   final List<GlobalKey> _screenKeys = [
     GlobalKey(), // Schedule
     GlobalKey(), // Attendance
@@ -31,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     GlobalKey(), // Timetable
     GlobalKey(), // History
     GlobalKey(), // Reports
+    GlobalKey(), // Profile
   ];
 
   List<Widget> get _screens => [
@@ -40,6 +46,14 @@ class _HomeScreenState extends State<HomeScreen> {
     TimetableScreen(key: _screenKeys[3]),
     AttendanceHistoryScreen(key: _screenKeys[4]),
     ReportsScreen(key: _screenKeys[5]),
+    ProfileScreen(
+      key: _screenKeys[6],
+      onLogout: () {
+        setState(() {
+          _isAuthenticated = false;
+        });
+      },
+    ),
   ];
 
   final List<BottomNavigationBarItem> _bottomNavItems = [
@@ -75,6 +89,11 @@ class _HomeScreenState extends State<HomeScreen> {
       activeIcon: Icon(PhosphorIcons.chartBar(PhosphorIconsStyle.fill)),
       label: 'Reports',
     ),
+    BottomNavigationBarItem(
+      icon: Icon(PhosphorIcons.user()),
+      activeIcon: Icon(PhosphorIcons.user(PhosphorIconsStyle.fill)),
+      label: 'Profile',
+    ),
   ];
 
   void _refreshCurrentScreen() {
@@ -92,12 +111,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  void _checkAuthStatus() {
+    setState(() {
+      _isAuthenticated = _backendService.currentUser != null;
+    });
+  }
+
+  @override
   void dispose() {
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isAuthenticated) {
+      return AuthScreen(
+        onAuthSuccess: () {
+          setState(() {
+            _isAuthenticated = true;
+          });
+        },
+      );
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Tracker'),

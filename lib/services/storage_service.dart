@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:attendence_tracker/models/subject.dart';
 import 'package:attendence_tracker/models/attendance.dart';
 import 'package:attendence_tracker/models/timetable.dart';
+import 'package:attendence_tracker/services/backend_service.dart';
 
 class StorageService {
   static const String _subjectsKey = 'subjects';
@@ -18,6 +19,7 @@ class StorageService {
   static const int _backupIntervalHours = 24; // Backup every 24 hours
 
   static SharedPreferences? _prefs;
+  static final BackendService _backendService = BackendService();
 
   // Initialize the storage service with enhanced data persistence
   static Future<void> init() async {
@@ -184,6 +186,10 @@ class StorageService {
     final subjects = await getSubjects();
     subjects.add(subject);
     await saveSubjects(subjects);
+    // Also save to backend if user is authenticated
+    if (_backendService.currentUser != null) {
+      await _backendService.addSubject(subject);
+    }
     // Notify all relevant screens to refresh would happen here
   }
 
@@ -241,6 +247,10 @@ class StorageService {
     final records = await getAttendanceRecords();
     records.add(record);
     await saveAttendanceRecords(records);
+    // Also save to backend if user is authenticated
+    if (_backendService.currentUser != null) {
+      await _backendService.addAttendanceRecord(record);
+    }
     // Notify attendance and schedule screens would happen here
   }
 
@@ -350,6 +360,10 @@ class StorageService {
     final timetables = await getTimetables();
     timetables.add(timetable);
     await saveTimetables(timetables);
+    // Also save to backend if user is authenticated
+    if (_backendService.currentUser != null) {
+      await _backendService.addTimetable(timetable);
+    }
     // Notify relevant screens would happen here
   }
 

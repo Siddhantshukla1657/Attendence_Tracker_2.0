@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:attendence_tracker/theme/app_theme.dart';
 import 'package:attendence_tracker/services/storage_service.dart';
+import 'package:attendence_tracker/services/firebase_service.dart';
 
 import 'package:attendence_tracker/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await FirebaseService.initialize();
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
 
   // Initialize storage with enhanced persistence
   try {
@@ -28,6 +37,7 @@ class AttendanceTrackerApp extends StatefulWidget {
 }
 
 class _AttendanceTrackerAppState extends State<AttendanceTrackerApp> {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   bool _isDarkMode = false;
 
   @override
@@ -53,6 +63,7 @@ class _AttendanceTrackerAppState extends State<AttendanceTrackerApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Attendance Tracker',
       debugShowCheckedModeBanner: false,
 

@@ -46,6 +46,15 @@ dependencies:
   
   # Icons
   phosphor_flutter: ^2.0.1
+  
+  # Firebase core
+  firebase_core: ^3.6.0
+  
+  # Firebase authentication
+  firebase_auth: ^5.3.1
+  
+  # Cloud Firestore for database
+  cloud_firestore: ^5.4.4
 
 dev_dependencies:
   flutter_test:
