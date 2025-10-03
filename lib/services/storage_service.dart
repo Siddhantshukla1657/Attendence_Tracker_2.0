@@ -31,7 +31,10 @@ class StorageService {
     // Check if this is first run or data recovery needed
     await _ensureDataIntegrity();
 
-    // Perform automatic backup
+    // Try to sync with backend if user is authenticated
+    await _attemptBackendSync();
+
+    // Perform automatic backup after sync
     await _performAutomaticBackup();
   }
 
@@ -128,6 +131,66 @@ class StorageService {
     }
   }
 
+  // Attempt to sync with backend - improved version
+  static Future<void> _attemptBackendSync() async {
+    try {
+      // Only attempt sync if user is authenticated
+      if (_backendService.isAuthenticated) {
+        print('Attempting to sync with backend...');
+
+        // Check if backend has any data first
+        final hasBackendData = await _backendService.hasAnyData();
+
+        // Get data from local storage
+        final localSubjects = await getSubjects();
+        final localAttendance = await getAttendanceRecords();
+        final localTimetables = await getTimetables();
+        bool hasLocalData =
+            localSubjects.isNotEmpty ||
+            localAttendance.isNotEmpty ||
+            localTimetables.isNotEmpty;
+
+        if (hasBackendData) {
+          print(
+            'Found data in backend, fetching and updating local storage...',
+          );
+          // Get data from backend
+          final backendSubjects = await _backendService.getSubjects();
+          final backendAttendance = await _backendService
+              .getAttendanceRecords();
+          final backendTimetables = await _backendService.getTimetables();
+
+          // Update local storage with backend data
+          await saveSubjects(backendSubjects);
+          await saveAttendanceRecords(backendAttendance);
+          await saveTimetables(backendTimetables);
+
+          print(
+            'Local storage updated with backend data: '
+            '${backendSubjects.length} subjects, '
+            '${backendAttendance.length} attendance records, '
+            '${backendTimetables.length} timetables',
+          );
+        } else if (hasLocalData) {
+          // If no data in backend but we have local data, sync it to backend
+          print('No data found in backend, syncing local data...');
+          await _backendService.syncLocalDataWithBackend(
+            subjects: localSubjects,
+            attendanceRecords: localAttendance,
+            timetables: localTimetables,
+          );
+        } else {
+          print('No data found in either backend or local storage');
+        }
+      } else {
+        print('User not authenticated, skipping backend sync');
+      }
+    } catch (e) {
+      print('Backend sync failed: $e');
+      // Continue with local data if sync fails
+    }
+  }
+
   // Data migration for future versions
   static Future<void> _migrateData(int fromVersion, int toVersion) async {
     print('Migrating data from version $fromVersion to $toVersion');
@@ -187,10 +250,15 @@ class StorageService {
     subjects.add(subject);
     await saveSubjects(subjects);
     // Also save to backend if user is authenticated
-    if (_backendService.currentUser != null) {
-      await _backendService.addSubject(subject);
+    if (_backendService.isAuthenticated) {
+      try {
+        await _backendService.addSubject(subject);
+      } catch (e) {
+        print('Failed to add subject to backend: $e');
+        // Continue with local storage even if backend fails
+      }
     }
-    // Notify all relevant screens to refresh would happen here
+    // Notify all relevant screens to refresh would happen here if NavigationService existed
   }
 
   static Future<void> updateSubject(Subject updatedSubject) async {
@@ -199,6 +267,15 @@ class StorageService {
     if (index != -1) {
       subjects[index] = updatedSubject;
       await saveSubjects(subjects);
+      // Also update backend if user is authenticated
+      if (_backendService.isAuthenticated) {
+        try {
+          await _backendService.updateSubject(updatedSubject);
+        } catch (e) {
+          print('Failed to update subject in backend: $e');
+          // Continue with local storage even if backend fails
+        }
+      }
       // Notify all screens to refresh as subject changes affect many screens would happen here
     }
   }
@@ -212,6 +289,16 @@ class StorageService {
     final attendance = await getAttendanceRecords();
     attendance.removeWhere((a) => a.subjectId == subjectId);
     await saveAttendanceRecords(attendance);
+
+    // Also delete from backend if user is authenticated
+    if (_backendService.isAuthenticated) {
+      try {
+        await _backendService.deleteSubject(subjectId);
+      } catch (e) {
+        print('Failed to delete subject from backend: $e');
+        // Continue with local storage even if backend fails
+      }
+    }
 
     // Notify all screens to refresh as deleting subjects affects timetables and attendance
   }
@@ -248,8 +335,13 @@ class StorageService {
     records.add(record);
     await saveAttendanceRecords(records);
     // Also save to backend if user is authenticated
-    if (_backendService.currentUser != null) {
-      await _backendService.addAttendanceRecord(record);
+    if (_backendService.isAuthenticated) {
+      try {
+        await _backendService.addAttendanceRecord(record);
+      } catch (e) {
+        print('Failed to add attendance record to backend: $e');
+        // Continue with local storage even if backend fails
+      }
     }
     // Notify attendance and schedule screens would happen here
   }
@@ -262,6 +354,15 @@ class StorageService {
     if (index != -1) {
       records[index] = updatedRecord;
       await saveAttendanceRecords(records);
+      // Also update backend if user is authenticated
+      if (_backendService.isAuthenticated) {
+        try {
+          await _backendService.updateAttendanceRecord(updatedRecord);
+        } catch (e) {
+          print('Failed to update attendance record in backend: $e');
+          // Continue with local storage even if backend fails
+        }
+      }
       // Notify all relevant screens would happen here
     }
   }
@@ -270,6 +371,15 @@ class StorageService {
     final records = await getAttendanceRecords();
     records.removeWhere((r) => r.id == recordId);
     await saveAttendanceRecords(records);
+    // Also delete from backend if user is authenticated
+    if (_backendService.isAuthenticated) {
+      try {
+        await _backendService.deleteAttendanceRecord(recordId);
+      } catch (e) {
+        print('Failed to delete attendance record from backend: $e');
+        // Continue with local storage even if backend fails
+      }
+    }
   }
 
   static Future<List<AttendanceRecord>> getAttendanceForDate(
@@ -361,8 +471,13 @@ class StorageService {
     timetables.add(timetable);
     await saveTimetables(timetables);
     // Also save to backend if user is authenticated
-    if (_backendService.currentUser != null) {
-      await _backendService.addTimetable(timetable);
+    if (_backendService.isAuthenticated) {
+      try {
+        await _backendService.addTimetable(timetable);
+      } catch (e) {
+        print('Failed to add timetable to backend: $e');
+        // Continue with local storage even if backend fails
+      }
     }
     // Notify relevant screens would happen here
   }
@@ -373,6 +488,15 @@ class StorageService {
     if (index != -1) {
       timetables[index] = updatedTimetable;
       await saveTimetables(timetables);
+      // Also update backend if user is authenticated
+      if (_backendService.isAuthenticated) {
+        try {
+          await _backendService.updateTimetable(updatedTimetable);
+        } catch (e) {
+          print('Failed to update timetable in backend: $e');
+          // Continue with local storage even if backend fails
+        }
+      }
       // Notify all relevant screens as timetable changes affect schedule
     }
   }
@@ -381,6 +505,15 @@ class StorageService {
     final timetables = await getTimetables();
     timetables.removeWhere((t) => t.id == timetableId);
     await saveTimetables(timetables);
+    // Also delete from backend if user is authenticated
+    if (_backendService.isAuthenticated) {
+      try {
+        await _backendService.deleteTimetable(timetableId);
+      } catch (e) {
+        print('Failed to delete timetable from backend: $e');
+        // Continue with local storage even if backend fails
+      }
+    }
     // Notify all screens as deleting timetables affects many screens
   }
 
@@ -579,6 +712,67 @@ class StorageService {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  // Manual sync method that can be called from UI
+  static Future<void> syncWithBackend() async {
+    if (!_backendService.isAuthenticated) {
+      print('Cannot sync - user not authenticated');
+      return;
+    }
+
+    try {
+      print('Manual sync initiated...');
+
+      // Get local data
+      final localSubjects = await getSubjects();
+      final localAttendance = await getAttendanceRecords();
+      final localTimetables = await getTimetables();
+
+      // Sync with backend
+      await _backendService.syncLocalDataWithBackend(
+        subjects: localSubjects,
+        attendanceRecords: localAttendance,
+        timetables: localTimetables,
+      );
+
+      print('Manual sync completed successfully');
+    } catch (e) {
+      print('Manual sync failed: $e');
+      rethrow;
+    }
+  }
+
+  // Force fetch from backend and update local storage
+  static Future<void> forceFetchFromBackend() async {
+    if (!_backendService.isAuthenticated) {
+      print('Cannot fetch - user not authenticated');
+      return;
+    }
+
+    try {
+      print('Force fetching data from backend...');
+
+      // Get data from backend
+      final backendSubjects = await _backendService.getSubjects();
+      final backendAttendance = await _backendService.getAttendanceRecords();
+      final backendTimetables = await _backendService.getTimetables();
+
+      // Update local storage
+      await saveSubjects(backendSubjects);
+      await saveAttendanceRecords(backendAttendance);
+      await saveTimetables(backendTimetables);
+
+      print(
+        'Force fetch completed: '
+        '${backendSubjects.length} subjects, '
+        '${backendAttendance.length} attendance records, '
+        '${backendTimetables.length} timetables',
+      );
+    } catch (e) {
+      print('Force fetch failed: $e');
+      rethrow;
     }
   }
 }

@@ -64,6 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1016482599849',
     projectId: 'attendence-tracker-3a766',
     storageBucket: 'attendence-tracker-3a766.firebasestorage.app',
+    iosClientId:
+        '1016482599849-sfbl8lojii6l7lsd8g3b2olvstl5nm92.apps.googleusercontent.com',
     iosBundleId: 'com.example.attendenceTracker',
   );
 
@@ -73,6 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1016482599849',
     projectId: 'attendence-tracker-3a766',
     storageBucket: 'attendence-tracker-3a766.firebasestorage.app',
+    iosClientId:
+        '1016482599849-sfbl8lojii6l7lsd8g3b2olvstl5nm92.apps.googleusercontent.com',
     iosBundleId: 'com.example.attendenceTracker',
   );
 

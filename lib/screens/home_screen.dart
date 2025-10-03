@@ -9,6 +9,7 @@ import 'package:attendence_tracker/screens/attendance_history_screen.dart';
 import 'package:attendence_tracker/screens/profile_screen.dart';
 import 'package:attendence_tracker/screens/auth_screen.dart';
 import 'package:attendence_tracker/services/backend_service.dart';
+import 'package:attendence_tracker/services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onThemeToggle;
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isAuthenticated = false;
   final BackendService _backendService = BackendService();
-  
+
   final List<GlobalKey> _screenKeys = [
     GlobalKey(), // Schedule
     GlobalKey(), // Attendance
@@ -118,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _checkAuthStatus() {
     setState(() {
-      _isAuthenticated = _backendService.currentUser != null;
+      _isAuthenticated = _backendService.isAuthenticated;
     });
   }
 
@@ -129,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // If Firebase is not available or user is not authenticated, show a simplified version
     if (!_isAuthenticated) {
       return AuthScreen(
         onAuthSuccess: () {
@@ -138,11 +140,16 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
     }
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Tracker'),
         actions: [
+          IconButton(
+            icon: Icon(PhosphorIcons.arrowsClockwise()),
+            onPressed: _syncData,
+            tooltip: 'Sync data',
+          ),
           IconButton(
             icon: Icon(
               widget.isDarkMode ? PhosphorIcons.sun() : PhosphorIcons.moon(),
@@ -170,5 +177,57 @@ class _HomeScreenState extends State<HomeScreen> {
         iconSize: 20,
       ),
     );
+  }
+
+  // Sync data with backend
+  Future<void> _syncData() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text('Syncing data...'),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
+      // Sync with backend
+      await StorageService.syncWithBackend();
+
+      // Hide loading indicator
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data synced successfully!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // Refresh current screen
+      _refreshCurrentScreen();
+    } catch (e) {
+      // Hide loading indicator
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }

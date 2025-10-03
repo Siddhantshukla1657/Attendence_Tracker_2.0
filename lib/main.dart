@@ -9,11 +9,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
+  bool firebaseInitialized = false;
   try {
     await FirebaseService.initialize();
     print('Firebase initialized successfully');
+    firebaseInitialized = true;
   } catch (e) {
     print('Firebase initialization error: $e');
+    // Continue with local storage only if Firebase fails
   }
 
   // Initialize storage with enhanced persistence
@@ -26,18 +29,21 @@ void main() async {
     // The storage service has recovery mechanisms
   }
 
-  runApp(const AttendanceTrackerApp());
+  runApp(AttendanceTrackerApp(firebaseInitialized: firebaseInitialized));
 }
 
 class AttendanceTrackerApp extends StatefulWidget {
-  const AttendanceTrackerApp({super.key});
+  final bool firebaseInitialized;
+
+  const AttendanceTrackerApp({super.key, required this.firebaseInitialized});
 
   @override
   State<AttendanceTrackerApp> createState() => _AttendanceTrackerAppState();
 }
 
 class _AttendanceTrackerAppState extends State<AttendanceTrackerApp> {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
   bool _isDarkMode = false;
 
   @override

@@ -155,6 +155,14 @@ A comprehensive Flutter-based attendance tracking application designed for stude
    flutter run
    ```
 
+### Download APK
+
+You can download the pre-built APK files for Android:
+
+**[Download APK with Backend Support](APK's/Trackit_with_Backend.apk)** - Includes Firebase integration for cloud synchronization
+
+**[Download APK without Backend](APK's/Trackit.apk)** - Local-only storage version
+
 ### Building for Production
 
 **Android APK**

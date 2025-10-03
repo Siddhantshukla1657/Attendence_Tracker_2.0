@@ -12,7 +12,12 @@
           "package_name": "com.example.attendence_tracker"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1016482599849-0r85cf1o167q678jm919hl471n1s8j41.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB4w7647a8btizuG5L20-qGnC7ou3YU18Q"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1016482599849-0r85cf1o167q678jm919hl471n1s8j41.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1016482599849-sfbl8lojii6l7lsd8g3b2olvstl5nm92.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.attendenceTracker"
+              }
+            }
+          ]
         }
       }
     }

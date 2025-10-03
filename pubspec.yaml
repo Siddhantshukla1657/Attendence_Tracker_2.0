@@ -55,6 +55,8 @@ dependencies:
   
   # Cloud Firestore for database
   cloud_firestore: ^5.4.4
+  
+
 
 dev_dependencies:
   flutter_test:

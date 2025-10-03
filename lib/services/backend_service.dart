@@ -3,21 +3,33 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:attendence_tracker/models/subject.dart';
 import 'package:attendence_tracker/models/attendance.dart';
 import 'package:attendence_tracker/models/timetable.dart';
+import 'package:flutter/material.dart';
 
 class BackendService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Authentication methods
-  Future<User?> signUp(String email, String password) async {
+  Future<User?> signUp(String email, String password, String name) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Update the user's display name
+      if (credential.user != null) {
+        await credential.user!.updateDisplayName(name);
+        // Also store the name in Firestore
+        await _storeUserName(credential.user!.uid, name);
+      }
+
       return credential.user;
     } on FirebaseAuthException catch (e) {
       print('Sign up error: ${e.message}');
+      return null;
+    } catch (e) {
+      print('Unexpected sign up error: $e');
       return null;
     }
   }
@@ -32,18 +44,82 @@ class BackendService {
     } on FirebaseAuthException catch (e) {
       print('Sign in error: ${e.message}');
       return null;
+    } catch (e) {
+      print('Unexpected sign in error: $e');
+      return null;
     }
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      print('Sign out error: $e');
+    }
+  }
+
+  // Store user name in Firestore
+  Future<void> _storeUserName(String userId, String name) async {
+    try {
+      await _firestore.collection('users').doc(userId).set({
+        'name': name,
+        'email': _auth.currentUser?.email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error storing user name: $e');
+    }
+  }
+
+  // Get user name from Firestore
+  Future<String?> getUserName() async {
+    if (!isAuthenticated) return null;
+
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(currentUser?.uid)
+          .get();
+
+      if (doc.exists) {
+        return doc.data()?['name'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user name: $e');
+      return null;
+    }
+  }
+
+  // Update user name in Firestore
+  Future<void> updateUserName(String name) async {
+    if (!isAuthenticated) return;
+
+    try {
+      await _firestore.collection('users').doc(currentUser?.uid).update({
+        'name': name,
+      });
+
+      // Also update the Firebase user's display name
+      if (currentUser != null) {
+        await currentUser!.updateDisplayName(name);
+      }
+    } catch (e) {
+      print('Error updating user name: $e');
+    }
   }
 
   // Get current user
   User? get currentUser => _auth.currentUser;
 
+  // Check if user is authenticated
+  bool get isAuthenticated => currentUser != null;
+
   // Subjects operations
   Future<void> addSubject(Subject subject) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -51,12 +127,16 @@ class BackendService {
           .collection('subjects')
           .doc(subject.id)
           .set(subject.toJson());
+      print('Subject added to backend: ${subject.id}');
     } catch (e) {
       print('Error adding subject: $e');
     }
   }
 
   Future<List<Subject>> getSubjects() async {
+    // Return empty list if user is not authenticated
+    if (!isAuthenticated) return [];
+
     try {
       final snapshot = await _firestore
           .collection('users')
@@ -64,9 +144,12 @@ class BackendService {
           .collection('subjects')
           .get();
 
-      return snapshot.docs
+      final subjects = snapshot.docs
           .map((doc) => Subject.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
+
+      print('Fetched ${subjects.length} subjects from backend');
+      return subjects;
     } catch (e) {
       print('Error fetching subjects: $e');
       return [];
@@ -74,6 +157,9 @@ class BackendService {
   }
 
   Future<void> updateSubject(Subject subject) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -81,12 +167,16 @@ class BackendService {
           .collection('subjects')
           .doc(subject.id)
           .update(subject.toJson());
+      print('Subject updated in backend: ${subject.id}');
     } catch (e) {
       print('Error updating subject: $e');
     }
   }
 
   Future<void> deleteSubject(String subjectId) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -94,6 +184,7 @@ class BackendService {
           .collection('subjects')
           .doc(subjectId)
           .delete();
+      print('Subject deleted from backend: $subjectId');
     } catch (e) {
       print('Error deleting subject: $e');
     }
@@ -101,6 +192,9 @@ class BackendService {
 
   // Attendance operations
   Future<void> addAttendanceRecord(AttendanceRecord record) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -108,12 +202,16 @@ class BackendService {
           .collection('attendance')
           .doc(record.id)
           .set(record.toJson());
+      print('Attendance record added to backend: ${record.id}');
     } catch (e) {
       print('Error adding attendance record: $e');
     }
   }
 
   Future<List<AttendanceRecord>> getAttendanceRecords() async {
+    // Return empty list if user is not authenticated
+    if (!isAuthenticated) return [];
+
     try {
       final snapshot = await _firestore
           .collection('users')
@@ -121,12 +219,15 @@ class BackendService {
           .collection('attendance')
           .get();
 
-      return snapshot.docs
+      final records = snapshot.docs
           .map(
             (doc) =>
                 AttendanceRecord.fromJson(doc.data() as Map<String, dynamic>),
           )
           .toList();
+
+      print('Fetched ${records.length} attendance records from backend');
+      return records;
     } catch (e) {
       print('Error fetching attendance records: $e');
       return [];
@@ -134,6 +235,9 @@ class BackendService {
   }
 
   Future<void> updateAttendanceRecord(AttendanceRecord record) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -141,12 +245,16 @@ class BackendService {
           .collection('attendance')
           .doc(record.id)
           .update(record.toJson());
+      print('Attendance record updated in backend: ${record.id}');
     } catch (e) {
       print('Error updating attendance record: $e');
     }
   }
 
   Future<void> deleteAttendanceRecord(String recordId) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -154,6 +262,7 @@ class BackendService {
           .collection('attendance')
           .doc(recordId)
           .delete();
+      print('Attendance record deleted from backend: $recordId');
     } catch (e) {
       print('Error deleting attendance record: $e');
     }
@@ -161,6 +270,9 @@ class BackendService {
 
   // Timetable operations
   Future<void> addTimetable(Timetable timetable) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -168,12 +280,16 @@ class BackendService {
           .collection('timetables')
           .doc(timetable.id)
           .set(timetable.toJson());
+      print('Timetable added to backend: ${timetable.id}');
     } catch (e) {
       print('Error adding timetable: $e');
     }
   }
 
   Future<List<Timetable>> getTimetables() async {
+    // Return empty list if user is not authenticated
+    if (!isAuthenticated) return [];
+
     try {
       final snapshot = await _firestore
           .collection('users')
@@ -181,9 +297,12 @@ class BackendService {
           .collection('timetables')
           .get();
 
-      return snapshot.docs
+      final timetables = snapshot.docs
           .map((doc) => Timetable.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
+
+      print('Fetched ${timetables.length} timetables from backend');
+      return timetables;
     } catch (e) {
       print('Error fetching timetables: $e');
       return [];
@@ -191,6 +310,9 @@ class BackendService {
   }
 
   Future<void> updateTimetable(Timetable timetable) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -198,12 +320,16 @@ class BackendService {
           .collection('timetables')
           .doc(timetable.id)
           .update(timetable.toJson());
+      print('Timetable updated in backend: ${timetable.id}');
     } catch (e) {
       print('Error updating timetable: $e');
     }
   }
 
   Future<void> deleteTimetable(String timetableId) async {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     try {
       await _firestore
           .collection('users')
@@ -211,87 +337,158 @@ class BackendService {
           .collection('timetables')
           .doc(timetableId)
           .delete();
+      print('Timetable deleted from backend: $timetableId');
     } catch (e) {
       print('Error deleting timetable: $e');
     }
   }
 
-  // Sync local data with backend
+  // Sync local data with backend - improved version
   Future<void> syncLocalDataWithBackend({
     required List<Subject> subjects,
     required List<AttendanceRecord> attendanceRecords,
     required List<Timetable> timetables,
   }) async {
-    try {
-      final batch = _firestore.batch();
-      final userId = currentUser?.uid;
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
 
+    try {
+      final userId = currentUser?.uid;
       if (userId == null) return;
 
-      // Clear existing data
-      final subjectsSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('subjects')
-          .get();
+      print(
+        'Syncing ${subjects.length} subjects, ${attendanceRecords.length} attendance records, and ${timetables.length} timetables to backend',
+      );
 
-      final attendanceSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('attendance')
-          .get();
+      // Instead of clearing all data, we'll sync incrementally
+      // First, get existing data from backend to compare
+      final existingSubjects = await getSubjects();
+      final existingAttendance = await getAttendanceRecords();
+      final existingTimetables = await getTimetables();
 
-      final timetablesSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('timetables')
-          .get();
+      print(
+        'Existing backend data: ${existingSubjects.length} subjects, '
+        '${existingAttendance.length} attendance records, '
+        '${existingTimetables.length} timetables',
+      );
 
-      // Delete existing data
-      for (final doc in subjectsSnapshot.docs) {
-        batch.delete(doc.reference);
-      }
+      // Sync subjects
+      int subjectsAdded = 0;
+      int subjectsUpdated = 0;
 
-      for (final doc in attendanceSnapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      for (final doc in timetablesSnapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      // Add new data
       for (final subject in subjects) {
-        final docRef = _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('subjects')
-            .doc(subject.id);
-        batch.set(docRef, subject.toJson());
+        final existingSubject = existingSubjects.firstWhere(
+          (s) => s.id == subject.id,
+          orElse: () => Subject(
+            id: '',
+            name: '',
+            teacherName: '',
+            classroom: '',
+            type: SubjectType.lecture,
+            color: '',
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        if (existingSubject.id.isEmpty) {
+          // Subject doesn't exist in backend, add it
+          await addSubject(subject);
+          subjectsAdded++;
+        } else if (subject.toJson().toString() !=
+            existingSubject.toJson().toString()) {
+          // Subject exists but has changed, update it
+          await updateSubject(subject);
+          subjectsUpdated++;
+        }
       }
+
+      // Sync attendance records
+      int attendanceAdded = 0;
+      int attendanceUpdated = 0;
 
       for (final record in attendanceRecords) {
-        final docRef = _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('attendance')
-            .doc(record.id);
-        batch.set(docRef, record.toJson());
+        final existingRecord = existingAttendance.firstWhere(
+          (r) => r.id == record.id,
+          orElse: () => AttendanceRecord(
+            id: '',
+            subjectId: '',
+            date: DateTime.now(),
+            startTime: DateTime.now(),
+            endTime: DateTime.now(),
+            status: AttendanceStatus.present,
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        if (existingRecord.id.isEmpty) {
+          // Record doesn't exist in backend, add it
+          await addAttendanceRecord(record);
+          attendanceAdded++;
+        } else if (record.toJson().toString() !=
+            existingRecord.toJson().toString()) {
+          // Record exists but has changed, update it
+          await updateAttendanceRecord(record);
+          attendanceUpdated++;
+        }
       }
+
+      // Sync timetables
+      int timetablesAdded = 0;
+      int timetablesUpdated = 0;
 
       for (final timetable in timetables) {
-        final docRef = _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('timetables')
-            .doc(timetable.id);
-        batch.set(docRef, timetable.toJson());
+        final existingTimetable = existingTimetables.firstWhere(
+          (t) => t.id == timetable.id,
+          orElse: () => Timetable(
+            id: '',
+            name: '',
+            schedule: {},
+            createdAt: DateTime.now(),
+            isActive: false,
+          ),
+        );
+
+        if (existingTimetable.id.isEmpty) {
+          // Timetable doesn't exist in backend, add it
+          await addTimetable(timetable);
+          timetablesAdded++;
+        } else if (timetable.toJson().toString() !=
+            existingTimetable.toJson().toString()) {
+          // Timetable exists but has changed, update it
+          await updateTimetable(timetable);
+          timetablesUpdated++;
+        }
       }
 
-      await batch.commit();
-      print('Data synced successfully with backend');
+      print(
+        'Data sync completed: '
+        '$subjectsAdded subjects added, $subjectsUpdated updated; '
+        '$attendanceAdded attendance records added, $attendanceUpdated updated; '
+        '$timetablesAdded timetables added, $timetablesUpdated updated',
+      );
     } catch (e) {
       print('Error syncing data with backend: $e');
+    }
+  }
+
+  // Method to check if backend has any data for the current user
+  Future<bool> hasAnyData() async {
+    if (!isAuthenticated) return false;
+
+    try {
+      final userId = currentUser?.uid;
+      if (userId == null) return false;
+
+      final subjects = await getSubjects();
+      final attendance = await getAttendanceRecords();
+      final timetables = await getTimetables();
+
+      return subjects.isNotEmpty ||
+          attendance.isNotEmpty ||
+          timetables.isNotEmpty;
+    } catch (e) {
+      print('Error checking backend data: $e');
+      return false;
     }
   }
 }
