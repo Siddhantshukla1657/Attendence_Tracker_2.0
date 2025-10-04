@@ -152,6 +152,7 @@ class BackendService {
       return subjects;
     } catch (e) {
       print('Error fetching subjects: $e');
+      // Return empty list on error to prevent app crashes
       return [];
     }
   }
@@ -230,6 +231,7 @@ class BackendService {
       return records;
     } catch (e) {
       print('Error fetching attendance records: $e');
+      // Return empty list on error to prevent app crashes
       return [];
     }
   }
@@ -305,6 +307,7 @@ class BackendService {
       return timetables;
     } catch (e) {
       print('Error fetching timetables: $e');
+      // Return empty list on error to prevent app crashes
       return [];
     }
   }
@@ -372,25 +375,19 @@ class BackendService {
         '${existingTimetables.length} timetables',
       );
 
+      // Create maps for faster lookup
+      final existingSubjectMap = {for (var s in existingSubjects) s.id: s};
+      final existingAttendanceMap = {for (var a in existingAttendance) a.id: a};
+      final existingTimetableMap = {for (var t in existingTimetables) t.id: t};
+
       // Sync subjects
       int subjectsAdded = 0;
       int subjectsUpdated = 0;
 
       for (final subject in subjects) {
-        final existingSubject = existingSubjects.firstWhere(
-          (s) => s.id == subject.id,
-          orElse: () => Subject(
-            id: '',
-            name: '',
-            teacherName: '',
-            classroom: '',
-            type: SubjectType.lecture,
-            color: '',
-            createdAt: DateTime.now(),
-          ),
-        );
+        final existingSubject = existingSubjectMap[subject.id];
 
-        if (existingSubject.id.isEmpty) {
+        if (existingSubject == null) {
           // Subject doesn't exist in backend, add it
           await addSubject(subject);
           subjectsAdded++;
@@ -407,20 +404,9 @@ class BackendService {
       int attendanceUpdated = 0;
 
       for (final record in attendanceRecords) {
-        final existingRecord = existingAttendance.firstWhere(
-          (r) => r.id == record.id,
-          orElse: () => AttendanceRecord(
-            id: '',
-            subjectId: '',
-            date: DateTime.now(),
-            startTime: DateTime.now(),
-            endTime: DateTime.now(),
-            status: AttendanceStatus.present,
-            createdAt: DateTime.now(),
-          ),
-        );
+        final existingRecord = existingAttendanceMap[record.id];
 
-        if (existingRecord.id.isEmpty) {
+        if (existingRecord == null) {
           // Record doesn't exist in backend, add it
           await addAttendanceRecord(record);
           attendanceAdded++;
@@ -437,18 +423,9 @@ class BackendService {
       int timetablesUpdated = 0;
 
       for (final timetable in timetables) {
-        final existingTimetable = existingTimetables.firstWhere(
-          (t) => t.id == timetable.id,
-          orElse: () => Timetable(
-            id: '',
-            name: '',
-            schedule: {},
-            createdAt: DateTime.now(),
-            isActive: false,
-          ),
-        );
+        final existingTimetable = existingTimetableMap[timetable.id];
 
-        if (existingTimetable.id.isEmpty) {
+        if (existingTimetable == null) {
           // Timetable doesn't exist in backend, add it
           await addTimetable(timetable);
           timetablesAdded++;
@@ -479,13 +456,31 @@ class BackendService {
       final userId = currentUser?.uid;
       if (userId == null) return false;
 
-      final subjects = await getSubjects();
-      final attendance = await getAttendanceRecords();
-      final timetables = await getTimetables();
+      // Check each collection for data
+      final subjectsSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('subjects')
+          .limit(1)
+          .get();
 
-      return subjects.isNotEmpty ||
-          attendance.isNotEmpty ||
-          timetables.isNotEmpty;
+      final attendanceSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('attendance')
+          .limit(1)
+          .get();
+
+      final timetablesSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('timetables')
+          .limit(1)
+          .get();
+
+      return subjectsSnapshot.docs.isNotEmpty ||
+          attendanceSnapshot.docs.isNotEmpty ||
+          timetablesSnapshot.docs.isNotEmpty;
     } catch (e) {
       print('Error checking backend data: $e');
       return false;

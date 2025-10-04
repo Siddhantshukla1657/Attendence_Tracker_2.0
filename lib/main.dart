@@ -29,13 +29,11 @@ void main() async {
     // The storage service has recovery mechanisms
   }
 
-  runApp(AttendanceTrackerApp(firebaseInitialized: firebaseInitialized));
+  runApp(const AttendanceTrackerApp());
 }
 
 class AttendanceTrackerApp extends StatefulWidget {
-  final bool firebaseInitialized;
-
-  const AttendanceTrackerApp({super.key, required this.firebaseInitialized});
+  const AttendanceTrackerApp({super.key});
 
   @override
   State<AttendanceTrackerApp> createState() => _AttendanceTrackerAppState();
@@ -50,6 +48,13 @@ class _AttendanceTrackerAppState extends State<AttendanceTrackerApp> {
   void initState() {
     super.initState();
     _loadThemePreference();
+  }
+
+  @override
+  void dispose() {
+    // Clean up resources
+    StorageService.dispose();
+    super.dispose();
   }
 
   Future<void> _loadThemePreference() async {
@@ -72,11 +77,38 @@ class _AttendanceTrackerAppState extends State<AttendanceTrackerApp> {
       navigatorKey: navigatorKey,
       title: 'Attendance Tracker',
       debugShowCheckedModeBanner: false,
-
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: HomeScreen(onThemeToggle: _toggleTheme, isDarkMode: _isDarkMode),
+      home: LayoutBuilder(
+        builder: (context, constraints) {
+          // Check if we're on a wide screen (web/desktop)
+          final isWideScreen = constraints.maxWidth > 600;
+          
+          if (isWideScreen) {
+            // For web/desktop, use a responsive layout
+            return HomeScreen(
+              onThemeToggle: _toggleTheme, 
+              isDarkMode: _isDarkMode,
+            );
+          } else {
+            // For mobile, use the standard layout
+            return HomeScreen(
+              onThemeToggle: _toggleTheme, 
+              isDarkMode: _isDarkMode,
+            );
+          }
+        },
+      ),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            // Ensure text scaling is appropriate for all devices
+            textScaleFactor: 1.0,
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }

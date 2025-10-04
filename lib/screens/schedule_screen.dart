@@ -357,118 +357,132 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Schedule'),
-        actions: [
-          IconButton(
-            icon: Icon(PhosphorIcons.calendarBlank()),
-            onPressed: _showDatePicker,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Check if we're on a wide screen (web/desktop)
+        final isWideScreen = constraints.maxWidth > 600;
+        
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Schedule'),
+            actions: [
+              IconButton(
+                icon: Icon(PhosphorIcons.calendarBlank()),
+                onPressed: _showDatePicker,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadScheduleData,
-              child: Column(
-                children: [
-                  // Date Header
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppTheme.defaultPadding),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(AppTheme.largeBorderRadius),
-                        bottomRight: Radius.circular(
-                          AppTheme.largeBorderRadius,
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _loadScheduleData,
+                  child: Column(
+                    children: [
+                      // Date Header
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(
+                          isWideScreen ? AppTheme.defaultPadding * 1.5 : AppTheme.defaultPadding
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(
+                              isWideScreen ? AppTheme.largeBorderRadius * 1.5 : AppTheme.largeBorderRadius
+                            ),
+                            bottomRight: Radius.circular(
+                              isWideScreen ? AppTheme.largeBorderRadius * 1.5 : AppTheme.largeBorderRadius
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              _formatDate(_selectedDate),
+                              style: AppTheme.headingTextStyle.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontSize: isWideScreen ? 24 : 20,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('EEEE').format(_selectedDate),
+                              style: AppTheme.bodyTextStyle.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
+                                fontSize: isWideScreen ? 18 : 16,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          _formatDate(_selectedDate),
-                          style: AppTheme.headingTextStyle.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('EEEE').format(_selectedDate),
-                          style: AppTheme.bodyTextStyle.copyWith(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  // Schedule List
-                  Expanded(
-                    child: _todaySchedule.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  PhosphorIcons.calendarX(),
-                                  size: 64,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.3),
+                      // Schedule List
+                      Expanded(
+                        child: _todaySchedule.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      PhosphorIcons.calendarX(),
+                                      size: isWideScreen ? 80 : 64,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No classes scheduled for this day',
+                                      style: AppTheme.bodyTextStyle.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface.withOpacity(0.6),
+                                        fontSize: isWideScreen ? 20 : 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No classes scheduled for this day',
-                                  style: AppTheme.bodyTextStyle.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface.withOpacity(0.6),
-                                  ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.all(
+                                  isWideScreen ? AppTheme.defaultPadding * 1.5 : AppTheme.defaultPadding,
                                 ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(
-                              AppTheme.defaultPadding,
-                            ),
-                            itemCount: _todaySchedule.length,
-                            itemBuilder: (context, index) {
-                              final slot = _todaySchedule[index];
-                              final subject = slot.subjectId != null
-                                  ? _getSubjectById(slot.subjectId!)
-                                  : null;
-                              final attendance = _getAttendanceForSlot(slot);
+                                itemCount: _todaySchedule.length,
+                                itemBuilder: (context, index) {
+                                  final slot = _todaySchedule[index];
+                                  final subject = slot.subjectId != null
+                                      ? _getSubjectById(slot.subjectId!)
+                                      : null;
+                                  final attendance = _getAttendanceForSlot(slot);
 
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppTheme.smallPadding,
-                                ),
-                                child: ScheduleCard(
-                                  timeSlot: slot,
-                                  subject: subject,
-                                  attendanceRecord: attendance,
-                                  onAttendanceUpdate: attendance != null
-                                      ? (status) => _updateAttendanceStatus(
-                                          attendance,
-                                          status,
-                                        )
-                                      : null,
-                                ),
-                              );
-                            },
-                          ),
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: isWideScreen ? AppTheme.smallPadding * 1.5 : AppTheme.smallPadding,
+                                    ),
+                                    child: ScheduleCard(
+                                      timeSlot: slot,
+                                      subject: subject,
+                                      attendanceRecord: attendance,
+                                      onAttendanceUpdate: attendance != null
+                                          ? (status) => _updateAttendanceStatus(
+                                              attendance,
+                                              status,
+                                            )
+                                          : null,
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+        );
+      },
     );
   }
 }

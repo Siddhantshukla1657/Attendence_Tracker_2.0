@@ -4,6 +4,8 @@ import 'package:attendence_tracker/models/subject.dart';
 import 'package:attendence_tracker/models/attendance.dart';
 import 'package:attendence_tracker/models/timetable.dart';
 import 'package:attendence_tracker/services/backend_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 
 class StorageService {
   static const String _subjectsKey = 'subjects';
@@ -14,12 +16,16 @@ class StorageService {
   static const String _lastBackupKey = 'last_backup_date';
   static const String _dataVersionKey = 'data_version';
   static const String _initializationKey = 'app_initialized';
+  static const String _lastSyncKey = 'last_sync_time';
 
   static const int _currentDataVersion = 1;
   static const int _backupIntervalHours = 24; // Backup every 24 hours
+  static const int _autoSyncIntervalMinutes = 5; // Auto sync every 5 minutes
 
   static SharedPreferences? _prefs;
   static final BackendService _backendService = BackendService();
+  static StreamSubscription<List<ConnectivityResult>>?
+  _connectivitySubscription;
 
   // Initialize the storage service with enhanced data persistence
   static Future<void> init() async {
@@ -34,6 +40,9 @@ class StorageService {
     // Try to sync with backend if user is authenticated
     await _attemptBackendSync();
 
+    // Set up automatic sync when connectivity changes
+    await _setupConnectivityListener();
+
     // Perform automatic backup after sync
     await _performAutomaticBackup();
   }
@@ -45,6 +54,63 @@ class StorageService {
       );
     }
     return _prefs!;
+  }
+
+  // Set up connectivity listener for automatic sync
+  static Future<void> _setupConnectivityListener() async {
+    try {
+      // Listen for connectivity changes
+      _connectivitySubscription?.cancel();
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+        List<ConnectivityResult> result,
+      ) async {
+        // Check if we have internet connectivity
+        if (result.any((r) => r != ConnectivityResult.none)) {
+          // Internet is available, attempt to sync
+          print('Internet connection detected, attempting auto sync...');
+          await _attemptAutoSync();
+        }
+      });
+
+      // Check current connectivity status
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult != ConnectivityResult.none) {
+        // Internet is available, attempt to sync
+        print('Internet available on app start, attempting auto sync...');
+        await _attemptAutoSync();
+      }
+    } catch (e) {
+      print('Error setting up connectivity listener: $e');
+    }
+  }
+
+  // Attempt automatic sync based on time interval
+  static Future<void> _attemptAutoSync() async {
+    try {
+      if (!_backendService.isAuthenticated) {
+        print('User not authenticated, skipping auto sync');
+        return;
+      }
+
+      final lastSyncStr = prefs.getString(_lastSyncKey);
+      final now = DateTime.now();
+
+      bool shouldSync = true;
+      if (lastSyncStr != null) {
+        final lastSync = DateTime.parse(lastSyncStr);
+        final minutesSinceSync = now.difference(lastSync).inMinutes;
+        shouldSync = minutesSinceSync >= _autoSyncIntervalMinutes;
+      }
+
+      if (shouldSync) {
+        print('Performing automatic sync...');
+        await syncWithBackend(bidirectional: true);
+        await prefs.setString(_lastSyncKey, now.toIso8601String());
+        print('Automatic sync completed');
+      }
+    } catch (e) {
+      print('Automatic sync failed: $e');
+    }
   }
 
   // Ensure data integrity and recover if needed
@@ -188,6 +254,39 @@ class StorageService {
     } catch (e) {
       print('Backend sync failed: $e');
       // Continue with local data if sync fails
+    }
+  }
+
+  // Force sync with backend - can be called when user logs in
+  static Future<void> forceSyncWithBackend() async {
+    try {
+      // Only attempt sync if user is authenticated
+      if (_backendService.isAuthenticated) {
+        print('Forcing sync with backend...');
+
+        // Get data from backend
+        final backendSubjects = await _backendService.getSubjects();
+        final backendAttendance = await _backendService.getAttendanceRecords();
+        final backendTimetables = await _backendService.getTimetables();
+
+        // Update local storage with backend data
+        await saveSubjects(backendSubjects);
+        await saveAttendanceRecords(backendAttendance);
+        await saveTimetables(backendTimetables);
+
+        print(
+          'Local storage updated with backend data: '
+          '${backendSubjects.length} subjects, '
+          '${backendAttendance.length} attendance records, '
+          '${backendTimetables.length} timetables',
+        );
+      } else {
+        print('User not authenticated, skipping backend sync');
+      }
+    } catch (e) {
+      print('Backend sync failed: $e');
+      // Continue with local data if sync fails
+      rethrow;
     }
   }
 
@@ -715,8 +814,8 @@ class StorageService {
     }
   }
 
-  // Manual sync method that can be called from UI
-  static Future<void> syncWithBackend() async {
+  // Manual sync method that can be called from UI - enhanced version
+  static Future<void> syncWithBackend({bool bidirectional = false}) async {
     if (!_backendService.isAuthenticated) {
       print('Cannot sync - user not authenticated');
       return;
@@ -725,17 +824,34 @@ class StorageService {
     try {
       print('Manual sync initiated...');
 
+      if (bidirectional) {
+        // First fetch data from backend and update local storage
+        print('Fetching data from backend...');
+        final backendSubjects = await _backendService.getSubjects();
+        final backendAttendance = await _backendService.getAttendanceRecords();
+        final backendTimetables = await _backendService.getTimetables();
+
+        // Update local storage with backend data
+        await saveSubjects(backendSubjects);
+        await saveAttendanceRecords(backendAttendance);
+        await saveTimetables(backendTimetables);
+        print('Local storage updated with backend data');
+      }
+
       // Get local data
       final localSubjects = await getSubjects();
       final localAttendance = await getAttendanceRecords();
       final localTimetables = await getTimetables();
 
-      // Sync with backend
+      // Sync local data with backend
       await _backendService.syncLocalDataWithBackend(
         subjects: localSubjects,
         attendanceRecords: localAttendance,
         timetables: localTimetables,
       );
+
+      // Update last sync time
+      await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
 
       print('Manual sync completed successfully');
     } catch (e) {
@@ -764,6 +880,9 @@ class StorageService {
       await saveAttendanceRecords(backendAttendance);
       await saveTimetables(backendTimetables);
 
+      // Update last sync time
+      await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+
       print(
         'Force fetch completed: '
         '${backendSubjects.length} subjects, '
@@ -774,5 +893,11 @@ class StorageService {
       print('Force fetch failed: $e');
       rethrow;
     }
+  }
+
+  // Dispose method to clean up resources
+  static Future<void> dispose() async {
+    await _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
   }
 }

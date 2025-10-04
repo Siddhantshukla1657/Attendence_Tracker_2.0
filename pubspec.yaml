@@ -55,6 +55,7 @@ dependencies:
   
   # Cloud Firestore for database
   cloud_firestore: ^5.4.4
+  connectivity_plus: ^7.0.0
   
 
 
