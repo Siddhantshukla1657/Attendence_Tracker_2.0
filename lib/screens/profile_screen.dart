@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:attendence_tracker/services/backend_service.dart';
+import 'package:attendence_tracker/services/storage_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -40,6 +41,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _userName = name;
       });
+    }
+  }
+
+  Future<void> _clearAllData() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Data Deletion'),
+        content: const Text(
+            'Are you sure you want to delete all data? This action cannot be undone and will remove all subjects, attendance records, and timetable data from both local storage and the database.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete All Data'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        // Delete all data from backend
+        await _backendService.deleteAllUserData();
+
+        // Clear all local data
+        await StorageService.clearAllData();
+
+        // Close loading indicator
+        Navigator.of(context).pop();
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All data has been deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        // Close loading indicator
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop();
+        }
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting data: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -95,6 +165,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 icon: Icon(PhosphorIcons.signOut()),
                 label: const Text('Sign Out'),
+              ),
+              const SizedBox(height: 24),
+              // Danger section with clear data button
+              const Text(
+                'Danger',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                color: Colors.red[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'This action will permanently delete all your data including subjects, attendance records, and timetables from both your device and the cloud database.',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _clearAllData,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Clear Data Now'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ] else
               const Text('No user logged in'),

@@ -486,4 +486,54 @@ class BackendService {
       return false;
     }
   }
+
+  // Method to delete all user data from backend
+  Future<void> deleteAllUserData() async {
+    if (!isAuthenticated) return;
+
+    try {
+      final userId = currentUser?.uid;
+      if (userId == null) return;
+
+      print('Deleting all user data from backend...');
+
+      // Delete all subjects
+      final subjectsSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('subjects')
+          .get();
+
+      for (final doc in subjectsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete all attendance records
+      final attendanceSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('attendance')
+          .get();
+
+      for (final doc in attendanceSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete all timetables
+      final timetablesSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('timetables')
+          .get();
+
+      for (final doc in timetablesSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      print('All user data deleted from backend successfully');
+    } catch (e) {
+      print('Error deleting user data from backend: $e');
+      rethrow;
+    }
+  }
 }
