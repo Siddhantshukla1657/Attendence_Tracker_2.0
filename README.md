@@ -1,7 +1,6 @@
 # 📚 Personalised Attendance Monitor
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.0%2B-blue.svg)](https://flutter.dev/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-lightgrey.svg)](https://flutter.dev/)
 [![Real-time](https://img.shields.io/badge/Real--time-Data%20Sync-brightgreen.svg)]()
 
@@ -102,33 +101,6 @@ A comprehensive Flutter-based attendance tracking application designed for stude
 - **Performance Optimized**: Smart caching and efficient data retrieval
 - **Debug Monitoring**: Comprehensive logging system for data flow tracking
 - **Cross-platform Compatibility**: Consistent behavior across Android, iOS, Web, and Desktop
-
-## 🚀 **Recent Technical Improvements**
-
-### Real-time Data Synchronization System
-- **Multi-layer Refresh Strategy**: Data fetches triggered by `initState()`, `didChangeDependencies()`, `didUpdateWidget()`, and `forceRefresh()`
-- **Smart Tab Navigation**: Automatic data refresh when switching between app screens
-- **Lifecycle Management**: Advanced widget lifecycle monitoring for optimal performance
-- **Debug Logging**: Comprehensive console output for monitoring data flow
-
-### Mobile-Optimized UI/UX
-- **Keyboard-Responsive Dialogs**: Fixed keyboard overflow issues on mobile devices
-- **Scrollable Forms**: All input forms support scrolling when keyboard appears
-- **Touch-Friendly Design**: Larger touch targets and intuitive gesture support
-- **Responsive Layouts**: Adaptive layouts that work on any screen size
-
-### Enhanced Calendar & History
-- **Interactive Date Picker**: Smart calendar with only attendance dates selectable
-- **Visual Date Grouping**: Records organized by date with clear section headers
-- **Edit Historical Records**: Ability to modify past attendance status
-- **Dual View Modes**: Calendar and Subject-wise filtering options
-
-### User Authentication & Data Security
-- **Firebase Authentication**: Secure email/password authentication
-- **Cloud Data Protection**: All user data stored securely in Firestore
-- **Data Privacy**: User data isolated and protected by Firebase security rules
-- **Account Management**: Full user profile management with name/email updates
-- **Data Deletion**: One-click deletion of all user data from both device and cloud
 
 ## 🎯 Key Technical Features
 
@@ -353,10 +325,3 @@ dependencies:
   cloud_firestore: ^5.4.4      # Firebase database
   connectivity_plus: ^7.0.0    # Network connectivity detection
 ```
-
-
-### Code Style
-- Follow Flutter's official style guide
-- Use meaningful variable and function names
-- Add comments for complex logic
-- Maintain consistent formatting
