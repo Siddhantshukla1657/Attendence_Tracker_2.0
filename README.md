@@ -85,6 +85,16 @@ A comprehensive Flutter-based attendance tracking application designed for stude
 - **Accessibility Support**: High contrast modes and readable fonts
 - **Modern Icons**: Phosphor Icon library for consistent, modern iconography
 
+### 🔐 User Authentication & Data Management
+- **Secure Authentication**: Firebase Authentication for secure login/signup
+- **Cloud Data Storage**: Firebase Firestore for real-time data synchronization
+- **Local Data Persistence**: SharedPreferences for offline data storage
+- **Bi-directional Sync**: Seamless synchronization between local and cloud data
+- **Automatic Backup**: Regular data backups to prevent data loss
+- **Data Recovery**: Automatic recovery from backups when needed
+- **Cross-Platform Sync**: Consistent data across all supported platforms
+- **Selective Data Clearing**: Option to clear all data from both device and cloud
+
 ### 💾 Data Management & Performance
 - **Local Storage**: Secure offline data storage using SharedPreferences
 - **Real-time Synchronization**: Advanced lifecycle management for instant data updates
@@ -112,6 +122,13 @@ A comprehensive Flutter-based attendance tracking application designed for stude
 - **Visual Date Grouping**: Records organized by date with clear section headers
 - **Edit Historical Records**: Ability to modify past attendance status
 - **Dual View Modes**: Calendar and Subject-wise filtering options
+
+### User Authentication & Data Security
+- **Firebase Authentication**: Secure email/password authentication
+- **Cloud Data Protection**: All user data stored securely in Firestore
+- **Data Privacy**: User data isolated and protected by Firebase security rules
+- **Account Management**: Full user profile management with name/email updates
+- **Data Deletion**: One-click deletion of all user data from both device and cloud
 
 ## 🎯 Key Technical Features
 
@@ -230,6 +247,11 @@ flutter build windows --release
    - Multi-level filtering options (subject + status)
    - Real-time search and chronological ordering
 
+8. **Profile Screen** (`lib/screens/profile_screen.dart`)
+   - User profile management
+   - Authentication controls (Sign Out)
+   - Data management (Clear All Data)
+
 ### Core Models
 
 - **Subject** (`lib/models/subject.dart`): Subject information and type management
@@ -243,6 +265,13 @@ flutter build windows --release
   - Real-time CRUD operations
   - Data validation and error handling
   - Cross-platform storage compatibility
+  - Cloud synchronization with Firebase
+
+- **Backend Service** (`lib/services/backend_service.dart`):
+  - Firebase Authentication integration
+  - Cloud Firestore data operations
+  - User profile management
+  - Data synchronization between local and cloud storage
 
 ### UI Components
 
@@ -273,9 +302,11 @@ lib/
 │   ├── subjects_screen.dart
 │   ├── timetable_screen.dart
 │   ├── reports_screen.dart
-│   └── past_lectures_screen.dart
+│   ├── past_lectures_screen.dart
+│   └── profile_screen.dart
 ├── services/                 # Business logic
-│   └── storage_service.dart
+│   ├── storage_service.dart
+│   └── backend_service.dart
 ├── theme/                    # UI theming
 │   └── app_theme.dart
 └── widgets/                  # Reusable components
@@ -317,6 +348,10 @@ dependencies:
   intl: ^0.19.0                # Date formatting
   fl_chart: ^0.66.2            # Charts and graphs
   phosphor_flutter: ^2.0.1     # Modern icons
+  firebase_core: ^3.6.0        # Firebase initialization
+  firebase_auth: ^5.3.1        # Firebase authentication
+  cloud_firestore: ^5.4.4      # Firebase database
+  connectivity_plus: ^7.0.0    # Network connectivity detection
 ```
 
 
