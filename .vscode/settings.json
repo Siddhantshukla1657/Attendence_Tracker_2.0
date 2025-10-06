@@ -1,3 +1,4 @@
 {
-    "java.configuration.updateBuildConfiguration": "disabled"
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "cmake.sourceDirectory": "C:/Users/Siddhant/Documents/flutter_projects/attendence_tracker/linux"
 }
