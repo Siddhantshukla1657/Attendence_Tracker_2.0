@@ -38,7 +38,8 @@ class StorageService {
     await _ensureDataIntegrity();
 
     // Try to sync with backend if user is authenticated
-    await _attemptBackendSync();
+    // Note: This is now commented out to load data faster on app startup
+    // await _attemptBackendSync();
 
     // Set up automatic sync when connectivity changes
     await _setupConnectivityListener();
@@ -54,6 +55,66 @@ class StorageService {
       );
     }
     return _prefs!;
+  }
+
+  // Method to perform background sync after app initialization
+  static Future<void> performBackgroundSync() async {
+    try {
+      // Only attempt sync if user is authenticated
+      if (_backendService.isAuthenticated) {
+        print('Performing background sync with backend...');
+
+        // Check if backend has any data first
+        final hasBackendData = await _backendService.hasAnyData();
+
+        // Get data from local storage
+        final localSubjects = await getSubjects();
+        final localAttendance = await getAttendanceRecords();
+        final localTimetables = await getTimetables();
+        bool hasLocalData =
+            localSubjects.isNotEmpty ||
+            localAttendance.isNotEmpty ||
+            localTimetables.isNotEmpty;
+
+        if (hasBackendData) {
+          print(
+            'Found data in backend, fetching and updating local storage...',
+          );
+          // Get data from backend
+          final backendSubjects = await _backendService.getSubjects();
+          final backendAttendance = await _backendService
+              .getAttendanceRecords();
+          final backendTimetables = await _backendService.getTimetables();
+
+          // Update local storage with backend data
+          await saveSubjects(backendSubjects);
+          await saveAttendanceRecords(backendAttendance);
+          await saveTimetables(backendTimetables);
+
+          print(
+            'Local storage updated with backend data: '
+            '${backendSubjects.length} subjects, '
+            '${backendAttendance.length} attendance records, '
+            '${backendTimetables.length} timetables',
+          );
+        } else if (hasLocalData) {
+          // If no data in backend but we have local data, sync it to backend
+          print('No data found in backend, syncing local data...');
+          await _backendService.syncLocalDataWithBackend(
+            subjects: localSubjects,
+            attendanceRecords: localAttendance,
+            timetables: localTimetables,
+          );
+        } else {
+          print('No data found in either backend or local storage');
+        }
+      } else {
+        print('User not authenticated, skipping backend sync');
+      }
+    } catch (e) {
+      print('Background sync failed: $e');
+      // Continue with local data if sync fails
+    }
   }
 
   // Set up connectivity listener for automatic sync
@@ -76,8 +137,11 @@ class StorageService {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult != ConnectivityResult.none) {
         // Internet is available, attempt to sync
-        print('Internet available on app start, attempting auto sync...');
-        await _attemptAutoSync();
+        print('Internet available on app start, scheduling auto sync...');
+        // Schedule sync to happen after app initialization
+        Future.delayed(const Duration(seconds: 2), () async {
+          await _attemptAutoSync();
+        });
       }
     } catch (e) {
       print('Error setting up connectivity listener: $e');
@@ -197,67 +261,7 @@ class StorageService {
     }
   }
 
-  // Attempt to sync with backend - improved version
-  static Future<void> _attemptBackendSync() async {
-    try {
-      // Only attempt sync if user is authenticated
-      if (_backendService.isAuthenticated) {
-        print('Attempting to sync with backend...');
-
-        // Check if backend has any data first
-        final hasBackendData = await _backendService.hasAnyData();
-
-        // Get data from local storage
-        final localSubjects = await getSubjects();
-        final localAttendance = await getAttendanceRecords();
-        final localTimetables = await getTimetables();
-        bool hasLocalData =
-            localSubjects.isNotEmpty ||
-            localAttendance.isNotEmpty ||
-            localTimetables.isNotEmpty;
-
-        if (hasBackendData) {
-          print(
-            'Found data in backend, fetching and updating local storage...',
-          );
-          // Get data from backend
-          final backendSubjects = await _backendService.getSubjects();
-          final backendAttendance = await _backendService
-              .getAttendanceRecords();
-          final backendTimetables = await _backendService.getTimetables();
-
-          // Update local storage with backend data
-          await saveSubjects(backendSubjects);
-          await saveAttendanceRecords(backendAttendance);
-          await saveTimetables(backendTimetables);
-
-          print(
-            'Local storage updated with backend data: '
-            '${backendSubjects.length} subjects, '
-            '${backendAttendance.length} attendance records, '
-            '${backendTimetables.length} timetables',
-          );
-        } else if (hasLocalData) {
-          // If no data in backend but we have local data, sync it to backend
-          print('No data found in backend, syncing local data...');
-          await _backendService.syncLocalDataWithBackend(
-            subjects: localSubjects,
-            attendanceRecords: localAttendance,
-            timetables: localTimetables,
-          );
-        } else {
-          print('No data found in either backend or local storage');
-        }
-      } else {
-        print('User not authenticated, skipping backend sync');
-      }
-    } catch (e) {
-      print('Backend sync failed: $e');
-      // Continue with local data if sync fails
-    }
-  }
-
-  // Force sync with backend - can be called when user logs in
+  // Force sync with backend - improved version
   static Future<void> forceSyncWithBackend() async {
     try {
       // Only attempt sync if user is authenticated

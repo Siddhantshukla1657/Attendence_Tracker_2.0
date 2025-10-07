@@ -115,6 +115,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkAuthStatus();
+    
+    // Perform background sync after app has loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await StorageService.performBackgroundSync();
+      print('Background sync completed after app load');
+    });
   }
 
   void _checkAuthStatus() {
