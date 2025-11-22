@@ -91,28 +91,28 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   /// Fetch data from backend and update local storage
   Future<void> _fetchDataFromBackend() async {
+    // Note: We no longer automatically fetch data from backend on login
+    // Local storage is now the source of truth
+    // We only sync local data to backend to ensure consistency
+    print('Skipping automatic backend fetch, will sync local data instead');
+
     try {
-      print('Fetching data from backend after login...');
+      // Get local data
+      final localSubjects = await StorageService.getSubjects();
+      final localAttendance = await StorageService.getAttendanceRecords();
+      final localTimetables = await StorageService.getTimetables();
 
-      // Get data from backend
-      final backendSubjects = await _backendService.getSubjects();
-      final backendAttendance = await _backendService.getAttendanceRecords();
-      final backendTimetables = await _backendService.getTimetables();
-
-      // Update local storage with backend data
-      await StorageService.saveSubjects(backendSubjects);
-      await StorageService.saveAttendanceRecords(backendAttendance);
-      await StorageService.saveTimetables(backendTimetables);
-
-      print(
-        'Local storage updated with backend data: '
-        '${backendSubjects.length} subjects, '
-        '${backendAttendance.length} attendance records, '
-        '${backendTimetables.length} timetables',
+      // Sync local data to backend
+      await _backendService.syncLocalDataWithBackend(
+        subjects: localSubjects,
+        attendanceRecords: localAttendance,
+        timetables: localTimetables,
       );
+
+      print('Local data synced to backend after login');
     } catch (e) {
-      print('Error fetching data from backend: $e');
-      // Continue with local data if fetch fails
+      print('Error syncing data after login: $e');
+      // Continue with local data if sync fails
     }
   }
 

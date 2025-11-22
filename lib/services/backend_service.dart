@@ -153,6 +153,7 @@ class BackendService {
     } catch (e) {
       print('Error fetching subjects: $e');
       // Return empty list on error to prevent app crashes
+      // This ensures local storage is prioritized when backend is unavailable
       return [];
     }
   }
@@ -232,6 +233,7 @@ class BackendService {
     } catch (e) {
       print('Error fetching attendance records: $e');
       // Return empty list on error to prevent app crashes
+      // This ensures local storage is prioritized when backend is unavailable
       return [];
     }
   }
@@ -308,6 +310,7 @@ class BackendService {
     } catch (e) {
       print('Error fetching timetables: $e');
       // Return empty list on error to prevent app crashes
+      // This ensures local storage is prioritized when backend is unavailable
       return [];
     }
   }
@@ -483,6 +486,7 @@ class BackendService {
           timetablesSnapshot.docs.isNotEmpty;
     } catch (e) {
       print('Error checking backend data: $e');
+      // Return false on error to ensure local storage is prioritized
       return false;
     }
   }

@@ -37,10 +37,6 @@ class StorageService {
     // Check if this is first run or data recovery needed
     await _ensureDataIntegrity();
 
-    // Try to sync with backend if user is authenticated
-    // Note: This is now commented out to load data faster on app startup
-    // await _attemptBackendSync();
-
     // Set up automatic sync when connectivity changes
     await _setupConnectivityListener();
 
@@ -64,10 +60,7 @@ class StorageService {
       if (_backendService.isAuthenticated) {
         print('Performing background sync with backend...');
 
-        // Check if backend has any data first
-        final hasBackendData = await _backendService.hasAnyData();
-
-        // Get data from local storage
+        // Get data from local storage first (this is our primary source now)
         final localSubjects = await getSubjects();
         final localAttendance = await getAttendanceRecords();
         final localTimetables = await getTimetables();
@@ -76,44 +69,49 @@ class StorageService {
             localAttendance.isNotEmpty ||
             localTimetables.isNotEmpty;
 
-        if (hasBackendData) {
-          print(
-            'Found data in backend, fetching and updating local storage...',
-          );
-          // Get data from backend
-          final backendSubjects = await _backendService.getSubjects();
-          final backendAttendance = await _backendService
-              .getAttendanceRecords();
-          final backendTimetables = await _backendService.getTimetables();
+        // Always prioritize local data - only fetch from backend if local is empty
+        if (!hasLocalData) {
+          print('No local data found, checking backend...');
+          final hasBackendData = await _backendService.hasAnyData();
 
-          // Update local storage with backend data
-          await saveSubjects(backendSubjects);
-          await saveAttendanceRecords(backendAttendance);
-          await saveTimetables(backendTimetables);
+          if (hasBackendData) {
+            print('Found data in backend, fetching...');
+            // Get data from backend
+            final backendSubjects = await _backendService.getSubjects();
+            final backendAttendance = await _backendService
+                .getAttendanceRecords();
+            final backendTimetables = await _backendService.getTimetables();
 
-          print(
-            'Local storage updated with backend data: '
-            '${backendSubjects.length} subjects, '
-            '${backendAttendance.length} attendance records, '
-            '${backendTimetables.length} timetables',
-          );
-        } else if (hasLocalData) {
-          // If no data in backend but we have local data, sync it to backend
-          print('No data found in backend, syncing local data...');
+            // Update local storage with backend data only if we don't have local data
+            await saveSubjects(backendSubjects);
+            await saveAttendanceRecords(backendAttendance);
+            await saveTimetables(backendTimetables);
+
+            print(
+              'Local storage updated with backend data: '
+              '${backendSubjects.length} subjects, '
+              '${backendAttendance.length} attendance records, '
+              '${backendTimetables.length} timetables',
+            );
+          } else {
+            print('No data found in either backend or local storage');
+          }
+        } else {
+          print('Local data found, syncing to backend if needed...');
+          // If we have local data, sync it to backend (local is our source of truth)
           await _backendService.syncLocalDataWithBackend(
             subjects: localSubjects,
             attendanceRecords: localAttendance,
             timetables: localTimetables,
           );
-        } else {
-          print('No data found in either backend or local storage');
         }
       } else {
-        print('User not authenticated, skipping backend sync');
+        print('User not authenticated, using local storage only');
       }
     } catch (e) {
       print('Background sync failed: $e');
-      // Continue with local data if sync fails
+      // Continue with local data if sync fails - local storage is our priority
+      print('Continuing with local storage data');
     }
   }
 
@@ -261,36 +259,39 @@ class StorageService {
     }
   }
 
-  // Force sync with backend - improved version
+  // Force sync with backend - improved version that prioritizes local data
   static Future<void> forceSyncWithBackend() async {
     try {
       // Only attempt sync if user is authenticated
       if (_backendService.isAuthenticated) {
         print('Forcing sync with backend...');
 
-        // Get data from backend
-        final backendSubjects = await _backendService.getSubjects();
-        final backendAttendance = await _backendService.getAttendanceRecords();
-        final backendTimetables = await _backendService.getTimetables();
-
-        // Update local storage with backend data
-        await saveSubjects(backendSubjects);
-        await saveAttendanceRecords(backendAttendance);
-        await saveTimetables(backendTimetables);
+        // Always prioritize local data as the source of truth
+        final localSubjects = await getSubjects();
+        final localAttendance = await getAttendanceRecords();
+        final localTimetables = await getTimetables();
 
         print(
-          'Local storage updated with backend data: '
-          '${backendSubjects.length} subjects, '
-          '${backendAttendance.length} attendance records, '
-          '${backendTimetables.length} timetables',
+          'Local data: ${localSubjects.length} subjects, '
+          '${localAttendance.length} attendance records, '
+          '${localTimetables.length} timetables',
         );
+
+        // Sync local data to backend (local is our source of truth)
+        await _backendService.syncLocalDataWithBackend(
+          subjects: localSubjects,
+          attendanceRecords: localAttendance,
+          timetables: localTimetables,
+        );
+
+        print('Local storage synced to backend successfully');
       } else {
         print('User not authenticated, skipping backend sync');
       }
     } catch (e) {
       print('Backend sync failed: $e');
-      // Continue with local data if sync fails
-      rethrow;
+      // Continue with local data if sync fails - local storage is our priority
+      print('Continuing with local storage data');
     }
   }
 
@@ -828,26 +829,55 @@ class StorageService {
     try {
       print('Manual sync initiated...');
 
-      if (bidirectional) {
-        // First fetch data from backend and update local storage
-        print('Fetching data from backend...');
-        final backendSubjects = await _backendService.getSubjects();
-        final backendAttendance = await _backendService.getAttendanceRecords();
-        final backendTimetables = await _backendService.getTimetables();
-
-        // Update local storage with backend data
-        await saveSubjects(backendSubjects);
-        await saveAttendanceRecords(backendAttendance);
-        await saveTimetables(backendTimetables);
-        print('Local storage updated with backend data');
-      }
-
-      // Get local data
+      // Get local data (always our source of truth)
       final localSubjects = await getSubjects();
       final localAttendance = await getAttendanceRecords();
       final localTimetables = await getTimetables();
 
-      // Sync local data with backend
+      if (bidirectional) {
+        print('Bidirectional sync requested, but prioritizing local data...');
+        // Even with bidirectional sync, we prioritize local data
+        // We still fetch from backend but don't overwrite local data
+        try {
+          final backendSubjects = await _backendService.getSubjects();
+          final backendAttendance = await _backendService
+              .getAttendanceRecords();
+          final backendTimetables = await _backendService.getTimetables();
+
+          print(
+            'Backend data: ${backendSubjects.length} subjects, '
+            '${backendAttendance.length} attendance records, '
+            '${backendTimetables.length} timetables',
+          );
+
+          // Merge backend data with local data (local takes precedence)
+          // This ensures no data loss from either source
+          final mergedSubjects = _mergeSubjectLists(
+            localSubjects,
+            backendSubjects,
+          );
+          final mergedAttendance = _mergeAttendanceLists(
+            localAttendance,
+            backendAttendance,
+          );
+          final mergedTimetables = _mergeTimetableLists(
+            localTimetables,
+            backendTimetables,
+          );
+
+          // Save merged data to local storage (local still takes precedence)
+          await saveSubjects(mergedSubjects);
+          await saveAttendanceRecords(mergedAttendance);
+          await saveTimetables(mergedTimetables);
+
+          print('Data merged successfully, local data takes precedence');
+        } catch (e) {
+          print('Error during bidirectional fetch: $e');
+          // Continue with local data only
+        }
+      }
+
+      // Sync local data with backend (local is our source of truth)
       await _backendService.syncLocalDataWithBackend(
         subjects: localSubjects,
         attendanceRecords: localAttendance,
@@ -857,11 +887,75 @@ class StorageService {
       // Update last sync time
       await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
 
-      print('Manual sync completed successfully');
+      print('Manual sync completed successfully with local data priority');
     } catch (e) {
       print('Manual sync failed: $e');
-      rethrow;
+      // Don't rethrow - continue with local data
+      print('Continuing with local storage data');
     }
+  }
+
+  // Helper method to merge subject lists, prioritizing local data
+  static List<Subject> _mergeSubjectLists(
+    List<Subject> localSubjects,
+    List<Subject> backendSubjects,
+  ) {
+    final localSubjectMap = {for (var s in localSubjects) s.id: s};
+    final backendSubjectMap = {for (var s in backendSubjects) s.id: s};
+
+    // Start with all local subjects
+    final mergedMap = Map<String, Subject>.from(localSubjectMap);
+
+    // Add backend subjects that don't exist locally
+    for (final entry in backendSubjectMap.entries) {
+      if (!mergedMap.containsKey(entry.key)) {
+        mergedMap[entry.key] = entry.value;
+      }
+    }
+
+    return mergedMap.values.toList();
+  }
+
+  // Helper method to merge attendance lists, prioritizing local data
+  static List<AttendanceRecord> _mergeAttendanceLists(
+    List<AttendanceRecord> localAttendance,
+    List<AttendanceRecord> backendAttendance,
+  ) {
+    final localAttendanceMap = {for (var a in localAttendance) a.id: a};
+    final backendAttendanceMap = {for (var a in backendAttendance) a.id: a};
+
+    // Start with all local attendance records
+    final mergedMap = Map<String, AttendanceRecord>.from(localAttendanceMap);
+
+    // Add backend records that don't exist locally
+    for (final entry in backendAttendanceMap.entries) {
+      if (!mergedMap.containsKey(entry.key)) {
+        mergedMap[entry.key] = entry.value;
+      }
+    }
+
+    return mergedMap.values.toList();
+  }
+
+  // Helper method to merge timetable lists, prioritizing local data
+  static List<Timetable> _mergeTimetableLists(
+    List<Timetable> localTimetables,
+    List<Timetable> backendTimetables,
+  ) {
+    final localTimetableMap = {for (var t in localTimetables) t.id: t};
+    final backendTimetableMap = {for (var t in backendTimetables) t.id: t};
+
+    // Start with all local timetables
+    final mergedMap = Map<String, Timetable>.from(localTimetableMap);
+
+    // Add backend timetables that don't exist locally
+    for (final entry in backendTimetableMap.entries) {
+      if (!mergedMap.containsKey(entry.key)) {
+        mergedMap[entry.key] = entry.value;
+      }
+    }
+
+    return mergedMap.values.toList();
   }
 
   // Force fetch from backend and update local storage
@@ -874,28 +968,56 @@ class StorageService {
     try {
       print('Force fetching data from backend...');
 
+      // Get current local data as backup
+      final currentLocalSubjects = await getSubjects();
+      final currentLocalAttendance = await getAttendanceRecords();
+      final currentLocalTimetables = await getTimetables();
+
       // Get data from backend
       final backendSubjects = await _backendService.getSubjects();
       final backendAttendance = await _backendService.getAttendanceRecords();
       final backendTimetables = await _backendService.getTimetables();
 
-      // Update local storage
-      await saveSubjects(backendSubjects);
-      await saveAttendanceRecords(backendAttendance);
-      await saveTimetables(backendTimetables);
+      // Only update local storage if we got data from backend
+      // Otherwise, keep local data intact
+      if (backendSubjects.isNotEmpty ||
+          backendAttendance.isNotEmpty ||
+          backendTimetables.isNotEmpty) {
+        // Merge backend data with local data (local takes precedence for conflicts)
+        final mergedSubjects = _mergeSubjectLists(
+          currentLocalSubjects,
+          backendSubjects,
+        );
+        final mergedAttendance = _mergeAttendanceLists(
+          currentLocalAttendance,
+          backendAttendance,
+        );
+        final mergedTimetables = _mergeTimetableLists(
+          currentLocalTimetables,
+          backendTimetables,
+        );
 
-      // Update last sync time
-      await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+        // Update local storage with merged data
+        await saveSubjects(mergedSubjects);
+        await saveAttendanceRecords(mergedAttendance);
+        await saveTimetables(mergedTimetables);
 
-      print(
-        'Force fetch completed: '
-        '${backendSubjects.length} subjects, '
-        '${backendAttendance.length} attendance records, '
-        '${backendTimetables.length} timetables',
-      );
+        // Update last sync time
+        await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+
+        print(
+          'Force fetch completed with merge: '
+          '${mergedSubjects.length} subjects, '
+          '${mergedAttendance.length} attendance records, '
+          '${mergedTimetables.length} timetables',
+        );
+      } else {
+        print('No data fetched from backend, keeping local data intact');
+      }
     } catch (e) {
       print('Force fetch failed: $e');
-      rethrow;
+      // Don't rethrow - continue with local data
+      print('Continuing with existing local storage data');
     }
   }
 
